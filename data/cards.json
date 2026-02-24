@@ -1,0 +1,225 @@
+{
+  "meta": {
+    "game_title": "Sovereign",
+    "description": "Sovereign - デッキ構築型カードゲーム",
+    "version": "1.0.0"
+  },
+  "card_types": ["treasure", "victory", "action"],
+  "cards": [
+    {
+      "id": "shard",
+      "name": "銅片",
+      "name_en": "Shard",
+      "type": "treasure",
+      "cost": 0,
+      "coin_value": 1,
+      "description": "+1 コイン",
+      "color": "#b87333",
+      "icon": "🪙"
+    },
+    {
+      "id": "seal",
+      "name": "銀印",
+      "name_en": "Seal",
+      "type": "treasure",
+      "cost": 3,
+      "coin_value": 2,
+      "description": "+2 コイン",
+      "color": "#c0c0c0",
+      "icon": "⚪"
+    },
+    {
+      "id": "sigil",
+      "name": "金璽",
+      "name_en": "Sigil",
+      "type": "treasure",
+      "cost": 6,
+      "coin_value": 3,
+      "description": "+3 コイン",
+      "color": "#ffd700",
+      "icon": "✨"
+    },
+    {
+      "id": "farmland",
+      "name": "農地",
+      "name_en": "Farmland",
+      "type": "victory",
+      "cost": 2,
+      "victory_points": 1,
+      "description": "1 勝利点",
+      "color": "#228b22",
+      "icon": "🌾"
+    },
+    {
+      "id": "domain",
+      "name": "領邦",
+      "name_en": "Domain",
+      "type": "victory",
+      "cost": 5,
+      "victory_points": 3,
+      "description": "3 勝利点",
+      "color": "#2e8b57",
+      "icon": "🏯"
+    },
+    {
+      "id": "realm",
+      "name": "王領",
+      "name_en": "Realm",
+      "type": "victory",
+      "cost": 8,
+      "victory_points": 6,
+      "description": "6 勝利点",
+      "color": "#006400",
+      "icon": "👑"
+    },
+    {
+      "id": "inspector",
+      "name": "巡察使",
+      "name_en": "Inspector General",
+      "type": "action",
+      "cost": 4,
+      "description": "帝国全土を巡察し、広く情報を集める。+3 カードを引く, +1 購入",
+      "color": "#5f7a61",
+      "icon": "🧭",
+      "effects": [
+        {"type": "draw", "amount": 3},
+        {"type": "buy", "amount": 1}
+      ]
+    },
+    {
+      "id": "council",
+      "name": "軍議",
+      "name_en": "War Council",
+      "type": "action",
+      "cost": 3,
+      "description": "将軍たちを召集し、矢継ぎ早に命令を下す。+2 アクション, +1 コイン",
+      "color": "#8b0000",
+      "icon": "🗡️",
+      "effects": [
+        {"type": "action", "amount": 2},
+        {"type": "coin", "amount": 1}
+      ]
+    },
+    {
+      "id": "plaza",
+      "name": "帝都広場",
+      "name_en": "Imperial Plaza",
+      "type": "action",
+      "cost": 5,
+      "description": "帝都の中枢で取引が活発に行われる。+3 カードを引く, +1 アクション, +1 コイン",
+      "color": "#cd853f",
+      "icon": "🏛️",
+      "effects": [
+        {"type": "draw", "amount": 3},
+        {"type": "action", "amount": 1},
+        {"type": "coin", "amount": 1}
+      ]
+    },
+    {
+      "id": "edict",
+      "name": "覇権布告",
+      "name_en": "Dominion Edict",
+      "type": "action",
+      "cost": 5,
+      "description": "覇者の名のもとに諸侯を圧する。+3 コイン。他プレイヤーは手札が2枚になるまで捨てる",
+      "color": "#7a1a1a",
+      "icon": "⚔️",
+      "effects": [
+        {"type": "coin", "amount": 3},
+        {"type": "attack_discard_to", "amount": 2}
+      ]
+    },
+    {
+      "id": "rampart",
+      "name": "護城壁",
+      "name_en": "Rampart",
+      "type": "action",
+      "cost": 3,
+      "description": "堅牢な城壁が侵略を阻む。+1 カードを引く, +1 アクション。攻撃をリアクションで無効化する",
+      "color": "#4682b4",
+      "icon": "🏰",
+      "effects": [
+        {"type": "draw", "amount": 1},
+        {"type": "action", "amount": 1}
+      ],
+      "reaction": "block_attack"
+    },
+    {
+      "id": "expedition",
+      "name": "遠征隊",
+      "name_en": "Expedition",
+      "type": "action",
+      "cost": 4,
+      "description": "辺境に隊を送り、財を持ち帰らせる。+2 購入, +2 コイン",
+      "color": "#6b8e23",
+      "icon": "🗺️",
+      "effects": [
+        {"type": "buy", "amount": 2},
+        {"type": "coin", "amount": 2}
+      ]
+    },
+    {
+      "id": "codex",
+      "name": "王命典籍",
+      "name_en": "Royal Codex",
+      "type": "action",
+      "cost": 5,
+      "description": "帝国の叡智を記した書に目を通し、次の策を練る。+2 カードを引く, +1 アクション, +1 購入",
+      "color": "#4b0082",
+      "icon": "📖",
+      "effects": [
+        {"type": "draw", "amount": 2},
+        {"type": "action", "amount": 1},
+        {"type": "buy", "amount": 1}
+      ]
+    },
+    {
+      "id": "network",
+      "name": "密偵網",
+      "name_en": "Spy Network",
+      "type": "action",
+      "cost": 2,
+      "description": "諜報員が古い情報を捨て、新たな情報を持ち帰る。+2 アクション。好きな枚数捨てて同数引く",
+      "color": "#696969",
+      "icon": "🕵️",
+      "effects": [
+        {"type": "action", "amount": 2},
+        {"type": "discard_draw", "amount": 0}
+      ]
+    },
+    {
+      "id": "chartered",
+      "name": "勅許工房",
+      "name_en": "Chartered Workshop",
+      "type": "action",
+      "cost": 3,
+      "description": "勅許状を持つ職人が要望の品を仕立てる。コスト6以下のカードを1枚獲得",
+      "color": "#a0522d",
+      "icon": "🔨",
+      "effects": [
+        {"type": "gain_card_up_to", "amount": 6}
+      ]
+    }
+  ],
+  "supply_setup": {
+    "always": ["shard", "seal", "sigil", "farmland", "domain", "realm"],
+    "kingdom_count": 10,
+    "pile_sizes": {
+      "shard": 60,
+      "seal": 40,
+      "sigil": 30,
+      "farmland": 12,
+      "domain": 12,
+      "realm": 12,
+      "default_action": 10
+    }
+  },
+  "starting_deck": {
+    "shard": 7,
+    "farmland": 3
+  },
+  "game_end_conditions": {
+    "province_empty": true,
+    "empty_piles": 3
+  }
+}

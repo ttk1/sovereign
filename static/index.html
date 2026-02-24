@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sovereign</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #242836;
+    --border: #2e3345;
+    --text: #e4e6f0;
+    --text-dim: #8b90a5;
+    --accent: #6c8cff;
+    --accent-glow: rgba(108, 140, 255, 0.3);
+    --sigil: #fbbf24;
+    --green: #34d399;
+    --red: #f87171;
+    --treasure-bg: #2a2520;
+    --victory-bg: #1a2a1a;
+    --action-bg: #1a1a2a;
+    --radius: 10px;
+  }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Lobby ── */
+  #lobby {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 2rem;
+  }
+
+  .lobby-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2.5rem;
+    max-width: 480px;
+    width: 100%;
+  }
+
+  .lobby-card h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin-bottom: 0.4rem;
+    background: linear-gradient(135deg, var(--accent), #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .lobby-card .subtitle {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    margin-bottom: 2rem;
+  }
+
+  .form-group { margin-bottom: 1.2rem; }
+
+  .form-group label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-bottom: 0.4rem;
+    font-weight: 600;
+  }
+
+  .form-group input {
+    width: 100%;
+    padding: 0.7rem 1rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 0.95rem;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .form-group input:focus { border-color: var(--accent); }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.7rem 1.4rem;
+    border: none;
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-primary:hover { filter: brightness(1.15); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { background: var(--border); }
+
+  .btn-small {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.78rem;
+  }
+
+  .btn-sigil { background: var(--sigil); color: #000; }
+  .btn-sigil:hover { filter: brightness(1.1); }
+
+  .btn-red { background: var(--red); color: #000; }
+
+  .btn-row { display: flex; gap: 0.6rem; margin-top: 1rem; }
+
+  .room-list {
+    margin-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    padding-top: 1rem;
+  }
+
+  .room-list h3 {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    margin-bottom: 0.6rem;
+  }
+
+  .room-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem 0.8rem;
+    background: var(--surface2);
+    border-radius: var(--radius);
+    margin-bottom: 0.4rem;
+    font-size: 0.85rem;
+  }
+
+  .room-item .room-id {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--accent);
+  }
+
+  /* ── Waiting Room ── */
+  #waiting {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 2rem;
+  }
+
+  .waiting-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2.5rem;
+    max-width: 500px;
+    width: 100%;
+    text-align: center;
+  }
+
+  .waiting-card h2 {
+    font-size: 1.3rem;
+    margin-bottom: 0.3rem;
+  }
+
+  .waiting-card .room-code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.6rem;
+    color: var(--accent);
+    margin: 1rem 0;
+    letter-spacing: 0.15em;
+    user-select: all;
+  }
+
+  .player-list {
+    list-style: none;
+    margin: 1.5rem 0;
+  }
+
+  .player-list li {
+    padding: 0.5rem;
+    background: var(--surface2);
+    border-radius: var(--radius);
+    margin-bottom: 0.3rem;
+    font-size: 0.9rem;
+  }
+
+  /* ── Game Board ── */
+  #game {
+    display: none;
+    min-height: 100vh;
+    padding: 0.8rem;
+  }
+
+  .game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem 1rem;
+    background: var(--surface);
+    border-radius: var(--radius);
+    margin-bottom: 0.8rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .turn-info {
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+  }
+
+  .turn-info .phase-badge {
+    padding: 0.2rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .status-bar {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.82rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .status-item { display: flex; align-items: center; gap: 0.3rem; }
+  .status-item .label { color: var(--text-dim); }
+
+  .opponents-row {
+    display: flex;
+    gap: 0.6rem;
+    margin-bottom: 0.8rem;
+    flex-wrap: wrap;
+  }
+
+  .opponent-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.6rem 1rem;
+    flex: 1;
+    min-width: 180px;
+    font-size: 0.8rem;
+  }
+
+  .opponent-card.is-current {
+    border-color: var(--accent);
+    box-shadow: 0 0 8px var(--accent-glow);
+  }
+
+  .opponent-card .opp-name {
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+  }
+
+  .opponent-card .opp-stats {
+    color: var(--text-dim);
+    display: flex;
+    gap: 0.6rem;
+  }
+
+  .opponent-play-area {
+    display: flex;
+    gap: 0.2rem;
+    margin-top: 0.3rem;
+    flex-wrap: wrap;
+  }
+
+  .mini-card {
+    font-size: 0.65rem;
+    padding: 0.15rem 0.35rem;
+    border-radius: 4px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+  }
+
+  /* ── Supply ── */
+  .supply-section {
+    margin-bottom: 0.8rem;
+  }
+
+  .supply-section h3 {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    margin-bottom: 0.4rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .supply-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.5rem;
+  }
+
+  .supply-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.6rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+
+  .supply-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+
+  .supply-card.empty {
+    opacity: 0.35;
+    pointer-events: none;
+  }
+
+  .supply-card .card-icon {
+    font-size: 1.5rem;
+    margin-bottom: 0.2rem;
+  }
+
+  .supply-card .card-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+
+  .supply-card .card-desc {
+    font-size: 0.68rem;
+    color: var(--text-dim);
+    margin-top: 0.15rem;
+  }
+
+  .supply-card .card-cost {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+    background: var(--sigil);
+    color: #000;
+    font-size: 0.7rem;
+    font-weight: 700;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+  }
+
+  .supply-card .card-count {
+    position: absolute;
+    bottom: 0.4rem;
+    right: 0.4rem;
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .supply-card.type-treasure { background: var(--treasure-bg); }
+  .supply-card.type-victory { background: var(--victory-bg); }
+  .supply-card.type-action { background: var(--action-bg); }
+
+  /* ── Play Area ── */
+  .play-area-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.8rem;
+    margin-bottom: 0.8rem;
+    min-height: 60px;
+  }
+
+  .play-area-section h3 {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    margin-bottom: 0.4rem;
+  }
+
+  .play-area-cards {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+
+  .played-card {
+    padding: 0.3rem 0.6rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  /* ── Hand ── */
+  .hand-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.8rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .hand-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+
+  .hand-header h3 {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .hand-cards {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .hand-card {
+    background: var(--surface2);
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.6rem 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    min-width: 90px;
+    text-align: center;
+    position: relative;
+  }
+
+  .hand-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-4px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+
+  .hand-card.selected {
+    border-color: var(--red);
+    background: rgba(248, 113, 113, 0.1);
+  }
+
+  .hand-card .card-icon { font-size: 1.3rem; }
+  .hand-card .card-name { font-size: 0.75rem; font-weight: 600; margin-top: 0.2rem; }
+  .hand-card .card-desc { font-size: 0.62rem; color: var(--text-dim); margin-top: 0.1rem; }
+
+  .hand-card.type-treasure { border-color: #b8733355; }
+  .hand-card.type-treasure:hover { border-color: #b87333; }
+  .hand-card.type-victory { border-color: #228b2255; }
+  .hand-card.type-action { border-color: #6c8cff55; }
+  .hand-card.type-action:hover { border-color: var(--accent); }
+
+  /* ── Actions Bar ── */
+  .actions-bar {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.8rem;
+  }
+
+  /* ── Log ── */
+  .log-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.8rem;
+    max-height: 180px;
+    overflow-y: auto;
+  }
+
+  .log-section h3 {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    margin-bottom: 0.4rem;
+  }
+
+  .log-entry {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    padding: 0.15rem 0;
+    font-family: 'JetBrains Mono', monospace;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .log-entry:last-child { border: none; }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--red);
+    color: #fff;
+    padding: 0.7rem 1.5rem;
+    border-radius: var(--radius);
+    font-size: 0.85rem;
+    font-weight: 600;
+    z-index: 100;
+    transition: transform 0.3s ease;
+    pointer-events: none;
+  }
+
+  .toast.show {
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* ── Game Over Overlay ── */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+  }
+
+  .overlay.active { display: flex; }
+
+  .overlay-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2.5rem;
+    text-align: center;
+    max-width: 400px;
+    width: 90%;
+  }
+
+  .overlay-card h2 {
+    font-size: 1.4rem;
+    margin-bottom: 1rem;
+  }
+
+  .score-list {
+    list-style: none;
+    margin: 1rem 0;
+  }
+
+  .score-list li {
+    padding: 0.6rem;
+    background: var(--surface2);
+    border-radius: var(--radius);
+    margin-bottom: 0.3rem;
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+  }
+
+  .score-list li:first-child {
+    background: linear-gradient(135deg, rgba(251,191,36,0.2), rgba(251,191,36,0.05));
+    border: 1px solid rgba(251,191,36,0.3);
+  }
+
+  .discard-prompt {
+    background: rgba(248, 113, 113, 0.1);
+    border: 1px solid var(--red);
+    border-radius: var(--radius);
+    padding: 0.8rem 1rem;
+    margin-bottom: 0.8rem;
+    font-size: 0.85rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  @media (max-width: 600px) {
+    .supply-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
+    .hand-card { min-width: 75px; padding: 0.4rem 0.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── LOBBY ── -->
+<div id="lobby">
+  <div class="lobby-card">
+    <h1>👑 Sovereign</h1>
+    <p class="subtitle">デッキ構築型カードゲーム</p>
+
+    <div class="form-group">
+      <label>プレイヤー名</label>
+      <input type="text" id="playerName" value="" placeholder="名前を入力" maxlength="20">
+    </div>
+
+    <div class="form-group">
+      <label>ルームID（参加する場合）</label>
+      <input type="text" id="roomId" value="" placeholder="空欄で新規作成">
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="joinOrCreate()">参加 / 作成</button>
+      <button class="btn btn-secondary" onclick="refreshRooms()">ルーム一覧を更新</button>
+    </div>
+
+    <div class="room-list" id="roomList">
+      <h3>公開ルーム</h3>
+      <div id="roomListItems"><span style="color:var(--text-dim);font-size:0.8rem">読み込み中...</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── WAITING ROOM ── -->
+<div id="waiting">
+  <div class="waiting-card">
+    <h2>待機中...</h2>
+    <div class="room-code" id="waitRoomCode"></div>
+    <p style="font-size:0.8rem;color:var(--text-dim)">このコードを友人に共有してください</p>
+    <ul class="player-list" id="waitPlayerList"></ul>
+    <div class="btn-row" style="justify-content:center">
+      <button class="btn btn-primary" onclick="startGame()">ゲーム開始</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── GAME BOARD ── -->
+<div id="game">
+  <div class="game-header">
+    <div class="turn-info">
+      <span id="turnPlayer"></span>
+      <span class="phase-badge" id="phaseBadge"></span>
+    </div>
+    <div class="status-bar" id="statusBar"></div>
+  </div>
+
+  <div class="opponents-row" id="opponents"></div>
+
+  <div id="discardPrompt" class="discard-prompt" style="display:none">
+    <span id="discardPromptText"></span>
+    <button class="btn btn-small btn-red" onclick="submitDiscard()">決定</button>
+  </div>
+
+  <div class="supply-section">
+    <h3>サプライ</h3>
+    <div class="supply-grid" id="supplyGrid"></div>
+  </div>
+
+  <div class="play-area-section">
+    <h3>場に出したカード</h3>
+    <div class="play-area-cards" id="playArea"></div>
+  </div>
+
+  <div class="hand-section">
+    <div class="hand-header">
+      <h3>手札</h3>
+      <div class="actions-bar" id="actionsBar"></div>
+    </div>
+    <div class="hand-cards" id="handCards"></div>
+  </div>
+
+  <div class="log-section">
+    <h3>ログ</h3>
+    <div id="logEntries"></div>
+  </div>
+</div>
+
+<!-- ── Game Over Overlay ── -->
+<div class="overlay" id="gameOverOverlay">
+  <div class="overlay-card">
+    <h2>🏆 ゲーム終了</h2>
+    <ul class="score-list" id="scoreList"></ul>
+    <button class="btn btn-primary" onclick="location.reload()">ロビーに戻る</button>
+  </div>
+</div>
+
+<!-- ── Toast ── -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────
+let ws = null;
+let playerId = null;
+let gameId = null;
+let cardDefs = {};
+let gameState = null;
+let selectedDiscards = new Set();
+let discardMode = false;
+
+// ── Card Data ──────────────────────────────────────────────────
+async function loadCardData() {
+  const res = await fetch('/api/cards');
+  const data = await res.json();
+  for (const card of data.cards || []) {
+    cardDefs[card.id] = card;
+  }
+}
+
+function getCard(id) {
+  return cardDefs[id] || { id, name: id, icon: '?', description: '', type: 'unknown', cost: 0 };
+}
+
+// ── Lobby ──────────────────────────────────────────────────────
+async function refreshRooms() {
+  const res = await fetch('/api/games');
+  const rooms = await res.json();
+  const el = document.getElementById('roomListItems');
+  if (rooms.length === 0) {
+    el.innerHTML = '<span style="color:var(--text-dim);font-size:0.8rem">ルームがありません</span>';
+    return;
+  }
+  el.innerHTML = rooms.map(r => `
+    <div class="room-item">
+      <span><span class="room-id">${r.game_id}</span> (${r.players.length}人${r.started ? ' - 進行中' : ''})</span>
+      ${!r.started ? `<button class="btn btn-small btn-primary" onclick="joinRoom('${r.game_id}')">参加</button>` : ''}
+    </div>
+  `).join('');
+}
+
+function joinRoom(rid) {
+  document.getElementById('roomId').value = rid;
+  joinOrCreate();
+}
+
+async function joinOrCreate() {
+  const name = document.getElementById('playerName').value.trim() || 'Player';
+  let rid = document.getElementById('roomId').value.trim();
+
+  if (!rid) {
+    const res = await fetch('/api/games', { method: 'POST' });
+    const data = await res.json();
+    rid = data.game_id;
+  }
+
+  gameId = rid;
+  connectWS(name);
+}
+
+// ── WebSocket ──────────────────────────────────────────────────
+function connectWS(name) {
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${protocol}//${location.host}/ws/${gameId}`);
+
+  ws.onopen = () => {
+    const savedId = sessionStorage.getItem(`pid_${gameId}`);
+    ws.send(JSON.stringify({
+      action: 'join',
+      name: name,
+      player_id: savedId || undefined,
+    }));
+  };
+
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+
+    if (msg.type === 'joined') {
+      playerId = msg.player_id;
+      sessionStorage.setItem(`pid_${gameId}`, playerId);
+    } else if (msg.type === 'state') {
+      gameState = msg.state;
+      render();
+    } else if (msg.type === 'error') {
+      showToast(msg.message);
+    }
+  };
+
+  ws.onclose = () => {
+    showToast('接続が切断されました。ページをリロードしてください。');
+  };
+}
+
+function send(data) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(data));
+  }
+}
+
+function startGame() {
+  send({ action: 'start' });
+}
+
+// ── Rendering ──────────────────────────────────────────────────
+function render() {
+  if (!gameState) return;
+
+  if (!gameState.started) {
+    showWaiting();
+    return;
+  }
+
+  if (gameState.phase === 'game_over') {
+    showGame();
+    showGameOver();
+    return;
+  }
+
+  showGame();
+}
+
+function showWaiting() {
+  document.getElementById('lobby').style.display = 'none';
+  document.getElementById('waiting').style.display = 'flex';
+  document.getElementById('game').style.display = 'none';
+
+  document.getElementById('waitRoomCode').textContent = gameState.game_id;
+
+  const list = document.getElementById('waitPlayerList');
+  list.innerHTML = gameState.players.map(p =>
+    `<li>${p.name}${p.id === playerId ? ' (あなた)' : ''}</li>`
+  ).join('');
+}
+
+function showGame() {
+  document.getElementById('lobby').style.display = 'none';
+  document.getElementById('waiting').style.display = 'none';
+  document.getElementById('game').style.display = 'block';
+
+  const st = gameState;
+  const myTurn = st.current_player === playerId;
+  const me = st.players.find(p => p.id === playerId);
+
+  // Header
+  const turnName = myTurn ? 'あなた' : st.current_player_name;
+  document.getElementById('turnPlayer').textContent = `${turnName} のターン`;
+
+  const phaseLabels = {
+    action: 'アクション', buy: '購入', cleanup: 'クリーンアップ',
+    discard: '捨て札選択', gain: '獲得選択', cellar: '捨て札選択', game_over: '終了'
+  };
+  const badge = document.getElementById('phaseBadge');
+  badge.textContent = phaseLabels[st.phase] || st.phase;
+
+  // Status
+  if (me) {
+    document.getElementById('statusBar').innerHTML = `
+      <div class="status-item"><span class="label">⚡</span> ${me.actions}</div>
+      <div class="status-item"><span class="label">🛒</span> ${me.buys}</div>
+      <div class="status-item"><span class="label">💰</span> ${me.coins}</div>
+      <div class="status-item"><span class="label">📚</span> ${me.deck_count}</div>
+      <div class="status-item"><span class="label">🗑️</span> ${me.discard_count}</div>
+    `;
+  }
+
+  // Opponents
+  const opps = st.players.filter(p => p.id !== playerId);
+  document.getElementById('opponents').innerHTML = opps.map(p => `
+    <div class="opponent-card ${p.id === st.current_player ? 'is-current' : ''}">
+      <div class="opp-name">${p.name}${!p.connected ? ' (切断)' : ''}</div>
+      <div class="opp-stats">
+        <span>手札:${p.hand_count}</span>
+        <span>山:${p.deck_count}</span>
+        <span>捨:${p.discard_count}</span>
+      </div>
+      <div class="opponent-play-area">
+        ${(p.play_area || []).map(cid => {
+          const c = getCard(cid);
+          return `<span class="mini-card">${c.icon || ''} ${c.name}</span>`;
+        }).join('')}
+      </div>
+    </div>
+  `).join('');
+
+  // Discard prompt
+  const dp = document.getElementById('discardPrompt');
+  const pa = st.pending_action;
+  discardMode = false;
+
+  if (pa && pa.type === 'militia_discard' && pa.target_player_id === playerId) {
+    dp.style.display = 'flex';
+    const needed = (me?.hand?.length || 0) - (pa.discard_to ?? 0);
+    document.getElementById('discardPromptText').textContent =
+      `アタック！ ${needed}枚選んで捨ててください（手札を${pa.discard_to}枚に）`;
+    discardMode = true;
+  } else if (pa && pa.type === 'cellar' && pa.player_id === playerId) {
+    dp.style.display = 'flex';
+    document.getElementById('discardPromptText').textContent =
+      '捨てるカードを選んでください（0枚でもOK）';
+    discardMode = true;
+  } else {
+    dp.style.display = 'none';
+    selectedDiscards.clear();
+  }
+
+  // Supply
+  renderSupply(st, myTurn, me);
+
+  // Play area
+  const pa2 = document.getElementById('playArea');
+  if (me) {
+    pa2.innerHTML = (me.play_area || []).map(cid => {
+      const c = getCard(cid);
+      return `<span class="played-card">${c.icon || ''} ${c.name}</span>`;
+    }).join('') || '<span style="color:var(--text-dim);font-size:0.75rem">なし</span>';
+  }
+
+  // Hand
+  renderHand(me, myTurn, st);
+
+  // Actions bar
+  renderActions(myTurn, st, me);
+
+  // Log
+  renderLog(st.log);
+}
+
+function renderSupply(st, myTurn, me) {
+  const grid = document.getElementById('supplyGrid');
+  const entries = Object.entries(st.supply || {});
+
+  // Sort: treasures first, then victory, then action
+  const order = { treasure: 0, victory: 1, action: 2 };
+  entries.sort((a, b) => {
+    const ca = getCard(a[0]), cb = getCard(b[0]);
+    return (order[ca.type] ?? 3) - (order[cb.type] ?? 3) || (ca.cost || 0) - (cb.cost || 0);
+  });
+
+  // Check if we're in gain mode
+  const isGainMode = st.pending_action?.type === 'gain' && st.pending_action?.player_id === playerId;
+  const maxCost = st.pending_action?.max_cost || 0;
+
+  grid.innerHTML = entries.map(([cid, count]) => {
+    const c = getCard(cid);
+    const canBuy = myTurn && st.phase === 'buy' && (me?.coins || 0) >= (c.cost || 0) && count > 0 && (me?.buys || 0) > 0;
+    const canGain = isGainMode && count > 0 && (c.cost || 0) <= maxCost;
+
+    let onclick = '';
+    if (canGain) {
+      onclick = `onclick="gainCard('${cid}')"`;
+    } else if (canBuy) {
+      onclick = `onclick="buyCard('${cid}')"`;
+    }
+
+    return `
+      <div class="supply-card type-${c.type} ${count <= 0 ? 'empty' : ''}" ${onclick}
+           style="${(canBuy || canGain) ? 'cursor:pointer' : 'cursor:default'}">
+        <div class="card-icon">${c.icon || '🃏'}</div>
+        <div class="card-name">${c.name}</div>
+        <div class="card-desc">${c.description || ''}</div>
+        <div class="card-cost">${c.cost ?? 0}</div>
+        <div class="card-count">×${count}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderHand(me, myTurn, st) {
+  const container = document.getElementById('handCards');
+  if (!me || !me.hand) {
+    container.innerHTML = '';
+    return;
+  }
+
+  container.innerHTML = me.hand.map((cid, idx) => {
+    const c = getCard(cid);
+    const isSelected = selectedDiscards.has(idx);
+
+    let onclick = '';
+    if (discardMode) {
+      onclick = `onclick="toggleDiscard(${idx})"`;
+    } else if (myTurn && c.type === 'action' && st.phase === 'action' && (me.actions || 0) > 0) {
+      onclick = `onclick="playAction('${cid}')"`;
+    } else if (myTurn && c.type === 'treasure' && (st.phase === 'action' || st.phase === 'buy')) {
+      onclick = `onclick="playTreasure('${cid}')"`;
+    }
+
+    return `
+      <div class="hand-card type-${c.type} ${isSelected ? 'selected' : ''}" ${onclick}>
+        <div class="card-icon">${c.icon || '🃏'}</div>
+        <div class="card-name">${c.name}</div>
+        <div class="card-desc">${c.description || ''}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderActions(myTurn, st, me) {
+  const bar = document.getElementById('actionsBar');
+  if (!myTurn) {
+    bar.innerHTML = '';
+    return;
+  }
+
+  let buttons = [];
+
+  if (st.phase === 'action') {
+    buttons.push(`<button class="btn btn-small btn-secondary" onclick="skipAction()">アクション終了</button>`);
+  }
+
+  if (st.phase === 'action' || st.phase === 'buy') {
+    buttons.push(`<button class="btn btn-small btn-sigil" onclick="playAllTreasures()">💰 全財宝を出す</button>`);
+  }
+
+  if (st.phase === 'buy' || st.phase === 'action') {
+    buttons.push(`<button class="btn btn-small btn-secondary" onclick="endTurn()">ターン終了</button>`);
+  }
+
+  bar.innerHTML = buttons.join('');
+}
+
+function renderLog(log) {
+  const el = document.getElementById('logEntries');
+  el.innerHTML = (log || []).slice().reverse().map(l =>
+    `<div class="log-entry">${l}</div>`
+  ).join('');
+}
+
+function showGameOver() {
+  const overlay = document.getElementById('gameOverOverlay');
+  overlay.classList.add('active');
+
+  const scores = gameState.scores || [];
+  scores.sort((a, b) => b.vp - a.vp);
+
+  document.getElementById('scoreList').innerHTML = scores.map((s, i) => `
+    <li>
+      <span>${i === 0 ? '👑 ' : ''}${s.name}${s.id === playerId ? ' (あなた)' : ''}</span>
+      <span>${s.vp} VP</span>
+    </li>
+  `).join('');
+}
+
+// ── Actions ────────────────────────────────────────────────────
+function playAction(cardId) { send({ action: 'play_action', card_id: cardId }); }
+function playTreasure(cardId) { send({ action: 'play_treasure', card_id: cardId }); }
+function playAllTreasures() { send({ action: 'play_all_treasures' }); }
+function skipAction() { send({ action: 'skip_action' }); }
+function endTurn() { send({ action: 'end_turn' }); }
+function buyCard(cardId) { send({ action: 'buy', card_id: cardId }); }
+function gainCard(cardId) { send({ action: 'gain_selection', card_id: cardId }); }
+
+function toggleDiscard(idx) {
+  if (selectedDiscards.has(idx)) {
+    selectedDiscards.delete(idx);
+  } else {
+    selectedDiscards.add(idx);
+  }
+  // Re-render hand with updated selections
+  const me = gameState.players.find(p => p.id === playerId);
+  renderHand(me, true, gameState);
+}
+
+function submitDiscard() {
+  const me = gameState.players.find(p => p.id === playerId);
+  if (!me) return;
+
+  const cardIds = Array.from(selectedDiscards).map(idx => me.hand[idx]);
+  const pa = gameState.pending_action;
+
+  if (pa?.type === 'militia_discard' || pa?.type === 'cellar') {
+    send({ action: 'discard_selection', card_ids: cardIds });
+  }
+  selectedDiscards.clear();
+}
+
+// ── Toast ──────────────────────────────────────────────────────
+function showToast(message) {
+  const el = document.getElementById('toast');
+  el.textContent = message;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ── Init ───────────────────────────────────────────────────────
+(async () => {
+  await loadCardData();
+  refreshRooms();
+
+  // Generate random default name
+  const adjectives = ['勇敢な', '賢い', '素早い', '力強い', '不思議な'];
+  const nouns = ['騎士', '魔術師', '商人', '冒険者', '錬金術師'];
+  const a = adjectives[Math.floor(Math.random() * adjectives.length)];
+  const n = nouns[Math.floor(Math.random() * nouns.length)];
+  document.getElementById('playerName').value = a + n;
+})();
+</script>
+</body>
+</html>
