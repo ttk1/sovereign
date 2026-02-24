@@ -7,6 +7,7 @@ Usage:
 """
 
 import json
+import os
 import uuid
 import asyncio
 from pathlib import Path
@@ -20,13 +21,32 @@ from game_engine import Game, CardData, Phase
 
 # ── Load card data ──────────────────────────────────────────────
 ROOT = Path(__file__).parent
-CARD_DATA_PATH = ROOT / "data" / "cards.json"
+
+def _resolve_card_path() -> Path:
+    """
+    カードファイルのパスを解決する。
+    環境変数 CARDS でファイル名またはフルパスを指定可能。
+
+    例:
+        CARDS=cards_decktop.json   → data/cards_decktop.json
+        CARDS=/path/to/my.json     → そのまま使用
+    """
+    env = os.environ.get("CARDS")
+    if env:
+        p = Path(env)
+        if not p.is_absolute():
+            p = ROOT / "data" / p
+        return p
+    return ROOT / "data" / "cards.json"
+
+CARD_DATA_PATH = _resolve_card_path()
 
 def load_card_data(path: Path = CARD_DATA_PATH) -> CardData:
     with open(path, "r", encoding="utf-8") as f:
         return CardData(json.load(f))
 
 card_data = load_card_data()
+print(f"[server] cards: {CARD_DATA_PATH}")
 
 # ── App ─────────────────────────────────────────────────────────
 app = FastAPI(title="Sovereign")
@@ -46,7 +66,7 @@ async def index():
 @app.get("/api/cards")
 async def get_cards():
     """Return all card definitions (for UI rendering)."""
-    with open(CARD_DATA_PATH, "r", encoding="utf-8") as f:
+    with open(CARD_DATA_PATH, encoding="utf-8") as f:
         return JSONResponse(json.load(f))
 
 

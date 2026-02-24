@@ -103,7 +103,7 @@ sovereign/
 3. **アクションフェーズ**: アクションカードを使用（初期1回）
 4. **購入フェーズ**: 財宝カードを出してコインでサプライからカードを購入
 5. **クリーンアップ**: 手札・場のカードをすべて捨て札にし、5枚ドロー
-6. 最高コストの勝利点カード（王領）が無くなるか、サプライの3山が空になったらゲーム終了
+6. 最高コストの勝利点カードが無くなるか、サプライの3山が空になったらゲーム終了
 7. 勝利点が最も多いプレイヤーの勝ち
 
 ---
@@ -223,23 +223,23 @@ docker compose exec -d app python scripts/bridge.py $GAME_ID --name Claude --por
 手番を待機して状態を表示します：
 
 ```bash
-PYTHONIOENCODING=utf-8 python scripts/interactive_play.py
+docker compose exec app env PYTHONIOENCODING=utf-8 python scripts/interactive_play.py
 ```
 
 状態が表示されたら、Claude Code がアクションを決めて送信します：
 
 ```bash
 # 例: アクションをスキップ
-PYTHONIOENCODING=utf-8 python scripts/interactive_play.py '{"action": "skip_action"}'
+docker compose exec app env PYTHONIOENCODING=utf-8 python scripts/interactive_play.py '{"action": "skip_action"}'
 
 # 例: 財宝を全て出す
-PYTHONIOENCODING=utf-8 python scripts/interactive_play.py '{"action": "play_all_treasures"}'
+docker compose exec app env PYTHONIOENCODING=utf-8 python scripts/interactive_play.py '{"action": "play_all_treasures"}'
 
 # 例: カードを購入（次の手番まで自動待機）
-PYTHONIOENCODING=utf-8 python scripts/interactive_play.py '{"action": "buy", "card_id": "sigil"}'
+docker compose exec app env PYTHONIOENCODING=utf-8 python scripts/interactive_play.py '{"action": "buy", "card_id": "sigil"}'
 
 # 例: 捨て札を選択
-PYTHONIOENCODING=utf-8 python scripts/interactive_play.py '{"action": "discard_selection", "card_ids": ["shard"]}'
+docker compose exec app env PYTHONIOENCODING=utf-8 python scripts/interactive_play.py '{"action": "discard_selection", "card_ids": ["shard"]}'
 ```
 
 1回のコマンドで「アクション送信 → 次の手番まで待機 → 状態表示」が完結します。

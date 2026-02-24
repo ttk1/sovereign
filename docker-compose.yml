@@ -9,4 +9,6 @@ services:
       - .:/app
       # .venv はコンテナ内のものを使う（ホストのものを上書きしない）
       - /app/.venv
+    environment:
+      - CARDS=${CARDS:-cards.json}
     command: uvicorn server:app --host 0.0.0.0 --port 8000 --reload
