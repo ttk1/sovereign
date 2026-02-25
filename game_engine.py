@@ -551,6 +551,7 @@ class Game:
                 "type": self.pending_action.get("type"),
                 "target_player_id": self.pending_action.get("target_player_id"),
                 "player_id": self.pending_action.get("player_id"),
+                "attacker_id": self.pending_action.get("attacker_id"),
                 "max_cost": self.pending_action.get("max_cost"),
                 "discard_to": self.pending_action.get("discard_to"),
             }
