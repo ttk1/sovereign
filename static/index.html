@@ -33,6 +33,7 @@
     color: var(--text);
     min-height: 100vh;
     overflow-x: hidden;
+    font-size: 20px;
   }
 
   /* ── Lobby ── */
@@ -215,6 +216,8 @@
     display: none;
     min-height: 100vh;
     padding: 0.8rem;
+    max-width: 2700px;
+    margin: 0 auto;
   }
 
   .game-header {
@@ -230,16 +233,16 @@
   }
 
   .turn-info {
-    font-size: 0.85rem;
+    font-size: 1rem;
     display: flex;
     align-items: center;
     gap: 0.8rem;
   }
 
   .turn-info .phase-badge {
-    padding: 0.2rem 0.6rem;
+    padding: 0.25rem 0.7rem;
     border-radius: 6px;
-    font-size: 0.75rem;
+    font-size: 0.9rem;
     font-weight: 600;
     background: var(--accent);
     color: #fff;
@@ -248,7 +251,7 @@
   .status-bar {
     display: flex;
     gap: 1rem;
-    font-size: 0.82rem;
+    font-size: 1rem;
     font-family: 'JetBrains Mono', monospace;
   }
 
@@ -266,10 +269,10 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 0.6rem 1rem;
+    padding: 0.7rem 1.1rem;
     flex: 1;
     min-width: 180px;
-    font-size: 0.8rem;
+    font-size: 0.95rem;
   }
 
   .opponent-card.is-current {
@@ -296,8 +299,8 @@
   }
 
   .mini-card {
-    font-size: 0.65rem;
-    padding: 0.15rem 0.35rem;
+    font-size: 0.8rem;
+    padding: 0.2rem 0.45rem;
     border-radius: 4px;
     background: var(--surface2);
     border: 1px solid var(--border);
@@ -309,11 +312,44 @@
   }
 
   .supply-section h3 {
-    font-size: 0.78rem;
+    font-size: 0.95rem;
     color: var(--text-dim);
-    margin-bottom: 0.4rem;
+    margin-bottom: 0.5rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
+  }
+
+  :root {
+    --card-w: clamp(145px, 8.5vw, 220px);
+    --card-h: clamp(210px, 12.5vw, 330px);
+  }
+
+  .supply-layout {
+    display: flex;
+    gap: clamp(0.5rem, 1vw, 1.5rem);
+    align-items: flex-start;
+    justify-content: center;
+  }
+
+  .supply-victory-cards {
+    display: grid;
+    grid-template-columns: var(--card-w);
+    gap: clamp(0.3rem, 0.5vw, 0.6rem);
+    flex-shrink: 0;
+  }
+
+  .supply-treasure-cards {
+    display: grid;
+    grid-template-columns: var(--card-w);
+    gap: clamp(0.3rem, 0.5vw, 0.6rem);
+    flex-shrink: 0;
+  }
+
+  .supply-action-cards {
+    display: grid;
+    grid-template-columns: repeat(5, var(--card-w));
+    gap: clamp(0.3rem, 0.5vw, 0.6rem);
+    flex-shrink: 0;
   }
 
   .supply-grid {
@@ -324,17 +360,22 @@
 
   .supply-card {
     background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 0.6rem;
+    border: 2px solid var(--border);
+    border-radius: clamp(10px, 1.2vw, 18px);
     cursor: pointer;
     transition: all 0.15s;
     position: relative;
+    width: var(--card-w);
+    height: var(--card-h);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
 
   .supply-card:hover {
     border-color: var(--accent);
-    transform: translateY(-2px);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.4);
   }
 
   .supply-card.empty {
@@ -342,43 +383,92 @@
     pointer-events: none;
   }
 
-  .supply-card .card-icon {
-    font-size: 1.5rem;
-    margin-bottom: 0.2rem;
+  /* カード上部：名前エリア
+     コストバッジは position:absolute で重ねるため
+     padding は左右対称にして名前を真ん中揃えにする */
+  .supply-card .card-header {
+    position: relative;
+    padding: clamp(0.3rem, 0.45vw, 0.55rem) clamp(0.4rem, 0.6vw, 0.7rem);
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border);
+    text-align: center;
   }
 
   .supply-card .card-name {
-    font-size: 0.8rem;
-    font-weight: 600;
+    font-size: clamp(0.72rem, 0.9vw, 1.05rem);
+    font-weight: 700;
+    line-height: 1.2;
+    /* コストバッジと重ならないよう左右に余白 */
+    padding: 0 clamp(1.6rem, 2.1vw, 2.6rem);
   }
 
-  .supply-card .card-desc {
-    font-size: 0.68rem;
-    color: var(--text-dim);
-    margin-top: 0.15rem;
-  }
-
+  /* コストバッジ：card-header 内に absolute で右上に配置 */
   .supply-card .card-cost {
     position: absolute;
-    top: 0.4rem;
-    right: 0.4rem;
+    top: 50%;
+    right: clamp(0.3rem, 0.4vw, 0.5rem);
+    transform: translateY(-50%);
     background: var(--sigil);
     color: #000;
-    font-size: 0.7rem;
+    font-size: clamp(0.7rem, 0.88vw, 1rem);
     font-weight: 700;
-    width: 22px;
-    height: 22px;
+    width: clamp(18px, 1.7vw, 26px);
+    height: clamp(18px, 1.7vw, 26px);
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 50%;
+    flex-shrink: 0;
+    z-index: 1;
+  }
+
+  /* カード中央：アイコンエリア
+     font-size を小さめに抑えて padding で余白確保、絵文字が枠内に収まる */
+  .supply-card .card-art {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(1.6rem, 2.4vw, 3.2rem);
+    background: rgba(0,0,0,0.18);
+    border-bottom: 1px solid var(--border);
+    min-height: clamp(56px, 6vw, 90px);
+    padding: clamp(0.5rem, 0.8vw, 1.2rem);
+    line-height: 1;
+  }
+
+  /* カード下部：説明・効果エリア */
+  .supply-card .card-body {
+    padding: clamp(0.35rem, 0.5vw, 0.65rem) clamp(0.4rem, 0.6vw, 0.7rem);
+    padding-bottom: clamp(1.5rem, 2vw, 2.5rem);
+    flex-shrink: 0;
+    text-align: center;
+  }
+
+  .supply-card .card-flavor {
+    font-size: clamp(0.52rem, 0.65vw, 0.75rem);
+    color: var(--text-dim);
+    line-height: 1.3;
+    margin-bottom: clamp(0.15rem, 0.25vw, 0.35rem);
+    font-style: italic;
+  }
+
+  .supply-card .card-effects {
+    font-size: clamp(0.62rem, 0.78vw, 0.9rem);
+    font-weight: 600;
+    line-height: 1.6;
+    color: var(--text);
+  }
+
+  .supply-card .card-effects .effect-line {
+    display: block;
   }
 
   .supply-card .card-count {
     position: absolute;
-    bottom: 0.4rem;
-    right: 0.4rem;
-    font-size: 0.65rem;
+    bottom: clamp(0.25rem, 0.35vw, 0.45rem);
+    right: clamp(0.4rem, 0.55vw, 0.65rem);
+    font-size: clamp(0.6rem, 0.75vw, 0.88rem);
     color: var(--text-dim);
     font-family: 'JetBrains Mono', monospace;
   }
@@ -386,6 +476,25 @@
   .supply-card.type-treasure { background: var(--treasure-bg); }
   .supply-card.type-victory { background: var(--victory-bg); }
   .supply-card.type-action { background: var(--action-bg); }
+  .supply-card.subtype-attack { background: #1f1218; border-color: #7a2030; }
+  .supply-card.subtype-attack:hover { border-color: #e05070; }
+  .supply-card.subtype-reaction { background: #111a2a; border-color: #1a4a7a; }
+  .supply-card.subtype-reaction:hover { border-color: #4090d0; }
+
+  /* サブタイプバッジ */
+  .supply-card .card-subtype {
+    display: inline-block;
+    font-size: clamp(0.5rem, 0.62vw, 0.7rem);
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    padding: 0.1em 0.5em;
+    border-radius: 3px;
+    margin-top: 0.2em;
+    text-transform: uppercase;
+  }
+  .card-subtype.st-action   { background: rgba(108,140,255,0.25); color: #8aabff; }
+  .card-subtype.st-attack   { background: rgba(220, 60, 80,0.3);  color: #f07090; }
+  .card-subtype.st-reaction { background: rgba(50, 160,220,0.25); color: #60c0e8; }
 
   /* ── Play Area ── */
   .play-area-section {
@@ -398,7 +507,7 @@
   }
 
   .play-area-section h3 {
-    font-size: 0.72rem;
+    font-size: 0.9rem;
     color: var(--text-dim);
     margin-bottom: 0.4rem;
   }
@@ -410,14 +519,14 @@
   }
 
   .played-card {
-    padding: 0.3rem 0.6rem;
+    padding: 0.4rem 0.8rem;
     background: var(--surface2);
     border: 1px solid var(--border);
     border-radius: 6px;
-    font-size: 0.75rem;
+    font-size: 0.9rem;
     display: flex;
     align-items: center;
-    gap: 0.3rem;
+    gap: 0.4rem;
   }
 
   /* ── Hand ── */
@@ -437,7 +546,7 @@
   }
 
   .hand-header h3 {
-    font-size: 0.78rem;
+    font-size: 0.95rem;
     color: var(--text-dim);
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -453,10 +562,10 @@
     background: var(--surface2);
     border: 2px solid var(--border);
     border-radius: var(--radius);
-    padding: 0.6rem 0.8rem;
+    padding: 0.8rem 1rem;
     cursor: pointer;
     transition: all 0.15s;
-    min-width: 90px;
+    min-width: 120px;
     text-align: center;
     position: relative;
   }
@@ -472,9 +581,9 @@
     background: rgba(248, 113, 113, 0.1);
   }
 
-  .hand-card .card-icon { font-size: 1.3rem; }
-  .hand-card .card-name { font-size: 0.75rem; font-weight: 600; margin-top: 0.2rem; }
-  .hand-card .card-desc { font-size: 0.62rem; color: var(--text-dim); margin-top: 0.1rem; }
+  .hand-card .card-icon { font-size: 1.8rem; }
+  .hand-card .card-name { font-size: 0.85rem; font-weight: 600; margin-top: 0.2rem; }
+  .hand-card .card-desc { font-size: 0.72rem; color: var(--text-dim); margin-top: 0.1rem; }
 
   .hand-card.type-treasure { border-color: #b8733355; }
   .hand-card.type-treasure:hover { border-color: #b87333; }
@@ -501,15 +610,15 @@
   }
 
   .log-section h3 {
-    font-size: 0.72rem;
+    font-size: 0.9rem;
     color: var(--text-dim);
     margin-bottom: 0.4rem;
   }
 
   .log-entry {
-    font-size: 0.75rem;
+    font-size: 0.9rem;
     color: var(--text-dim);
-    padding: 0.15rem 0;
+    padding: 0.2rem 0;
     font-family: 'JetBrains Mono', monospace;
     border-bottom: 1px solid var(--border);
   }
@@ -597,6 +706,14 @@
     align-items: center;
   }
 
+  @media (max-width: 800px) {
+    :root { --card-w: clamp(80px, 13vw, 110px); --card-h: clamp(110px, 18vw, 152px); }
+    .supply-layout { flex-direction: column; align-items: center; }
+    .supply-victory-cards { grid-template-columns: repeat(auto-fill, var(--card-w)); }
+    .supply-treasure-cards { grid-template-columns: repeat(auto-fill, var(--card-w)); }
+    .supply-action-cards { grid-template-columns: repeat(auto-fill, var(--card-w)); }
+  }
+
   @media (max-width: 600px) {
     .supply-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
     .hand-card { min-width: 75px; padding: 0.4rem 0.5rem; }
@@ -665,7 +782,11 @@
 
   <div class="supply-section">
     <h3>サプライ</h3>
-    <div class="supply-grid" id="supplyGrid"></div>
+    <div class="supply-layout">
+      <div class="supply-victory-cards" id="supplyVictoryGrid"></div>
+      <div class="supply-treasure-cards" id="supplyTreasureGrid"></div>
+      <div class="supply-action-cards" id="supplyActionGrid"></div>
+    </div>
   </div>
 
   <div class="play-area-section">
@@ -926,21 +1047,28 @@ function showGame() {
 }
 
 function renderSupply(st, myTurn, me) {
-  const grid = document.getElementById('supplyGrid');
+  const victoryGrid = document.getElementById('supplyVictoryGrid');
+  const treasureGrid = document.getElementById('supplyTreasureGrid');
+  const actionGrid = document.getElementById('supplyActionGrid');
   const entries = Object.entries(st.supply || {});
-
-  // Sort: treasures first, then victory, then action
-  const order = { treasure: 0, victory: 1, action: 2 };
-  entries.sort((a, b) => {
-    const ca = getCard(a[0]), cb = getCard(b[0]);
-    return (order[ca.type] ?? 3) - (order[cb.type] ?? 3) || (ca.cost || 0) - (cb.cost || 0);
-  });
 
   // Check if we're in gain mode
   const isGainMode = st.pending_action?.type === 'gain' && st.pending_action?.player_id === playerId;
   const maxCost = st.pending_action?.max_cost || 0;
 
-  grid.innerHTML = entries.map(([cid, count]) => {
+  const effectLabels = {
+    draw:             n => `+${n} カードを引く`,
+    action:           n => `+${n} アクション`,
+    buy:              n => `+${n} 購入`,
+    coin:             n => `+${n} コイン`,
+    coin_value:       n => `+${n} コイン`,
+    victory_points:   n => `${n} 勝利点`,
+    attack_discard_to:n => `他者: 手札を${n}枚に`,
+    discard_draw:     _ => `任意枚捨てて同数引く`,
+    gain_card_up_to:  n => `コスト${n}以下を獲得`,
+  };
+
+  function makeCardHTML(cid, count) {
     const c = getCard(cid);
     const canBuy = myTurn && st.phase === 'buy' && (me?.coins || 0) >= (c.cost || 0) && count > 0 && (me?.buys || 0) > 0;
     const canGain = isGainMode && count > 0 && (c.cost || 0) <= maxCost;
@@ -952,17 +1080,74 @@ function renderSupply(st, myTurn, me) {
       onclick = `onclick="buyCard('${cid}')"`;
     }
 
+    // 効果行を組み立てる
+    let effects = c.effects || [];
+    // 財宝・勝利点は effects 配列がないので個別フィールドから生成
+    if (effects.length === 0) {
+      if (c.type === 'treasure' && c.coin_value != null)
+        effects = [{ type: 'coin_value', amount: c.coin_value }];
+      else if (c.type === 'victory' && c.victory_points != null)
+        effects = [{ type: 'victory_points', amount: c.victory_points }];
+    }
+
+    // フレーバー：アクションカードは説明文の最初の句（句点まで）
+    let flavorText = '';
+    if (c.type === 'action') {
+      const match = (c.description || '').match(/^(.+?。)/);
+      flavorText = match ? match[1] : '';
+    }
+
+    const effectLines = effects.map(ef => {
+      const fn = effectLabels[ef.type];
+      return fn ? `<span class="effect-line">${fn(ef.amount)}</span>` : '';
+    }).filter(Boolean).join('');
+
+    const bodyHTML = effectLines
+      ? `${flavorText ? `<div class="card-flavor">${flavorText}</div>` : ''}<div class="card-effects">${effectLines}</div>`
+      : `<div class="card-flavor">${c.description || ''}</div>`;
+
+    const subtype = c.subtype || (c.type === 'action' ? 'action' : '');
+    const subtypeLabels = { action: 'アクション', attack: 'アタック', reaction: 'リアクション' };
+    const subtypeBadge = subtype && subtypeLabels[subtype]
+      ? `<div class="card-subtype st-${subtype}">${subtypeLabels[subtype]}</div>`
+      : '';
+
     return `
-      <div class="supply-card type-${c.type} ${count <= 0 ? 'empty' : ''}" ${onclick}
+      <div class="supply-card type-${c.type} subtype-${subtype} ${count <= 0 ? 'empty' : ''}" ${onclick}
            style="${(canBuy || canGain) ? 'cursor:pointer' : 'cursor:default'}">
-        <div class="card-icon">${c.icon || '🃏'}</div>
-        <div class="card-name">${c.name}</div>
-        <div class="card-desc">${c.description || ''}</div>
-        <div class="card-cost">${c.cost ?? 0}</div>
+        <div class="card-header">
+          <div class="card-name">${c.name}</div>
+          ${subtypeBadge}
+          <div class="card-cost">${c.cost ?? 0}</div>
+        </div>
+        <div class="card-art">${c.icon || '🃏'}</div>
+        <div class="card-body">
+          ${bodyHTML}
+        </div>
         <div class="card-count">×${count}</div>
       </div>
     `;
-  }).join('');
+  }
+
+  // Split into victory, treasure, action
+  const victoryEntries = [];
+  const treasureEntries = [];
+  const actionEntries = [];
+  for (const [cid, count] of entries) {
+    const c = getCard(cid);
+    if (c.type === 'victory') victoryEntries.push([cid, count]);
+    else if (c.type === 'treasure') treasureEntries.push([cid, count]);
+    else actionEntries.push([cid, count]);
+  }
+
+  // Sort victory/treasure by cost desc, actions by cost asc
+  victoryEntries.sort((a, b) => (getCard(b[0]).cost || 0) - (getCard(a[0]).cost || 0));
+  treasureEntries.sort((a, b) => (getCard(b[0]).cost || 0) - (getCard(a[0]).cost || 0));
+  actionEntries.sort((a, b) => (getCard(a[0]).cost || 0) - (getCard(b[0]).cost || 0));
+
+  victoryGrid.innerHTML = victoryEntries.map(([cid, count]) => makeCardHTML(cid, count)).join('');
+  treasureGrid.innerHTML = treasureEntries.map(([cid, count]) => makeCardHTML(cid, count)).join('');
+  actionGrid.innerHTML = actionEntries.map(([cid, count]) => makeCardHTML(cid, count)).join('');
 }
 
 function renderHand(me, myTurn, st) {
