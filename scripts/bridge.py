@@ -18,12 +18,16 @@ Endpoints:
 import asyncio
 import json
 import argparse
+import os
+import sys
 import urllib.request
 import websockets
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 import uvicorn
-import threading
+
+sys.path.insert(0, os.path.dirname(__file__))
+from card_utils import build_effect_text
 
 
 # ---- カード定義取得 ----
@@ -61,31 +65,56 @@ class Bridge:
         pa = state.get("pending_action") or {}
         current_player = state.get("current_player")
 
-        # 覇権布告による強制捨て札（相手ターン中でも発生）
+        # アタックによる強制捨て札（相手ターン中でも発生）
         if phase == "discard" and pa.get("target_player_id") == self.my_id:
             return True, {
                 "reason": "discard",
                 "phase": phase,
                 "pending_action": pa,
-                "description": f"覇権布告による強制捨て札（{pa.get('discard_to', 3)}枚まで）",
+                "description": f"アタックによる強制捨て札（{pa.get('discard_to', 3)}枚まで）",
             }
 
-        # 密偵網による任意捨て札（自分のターン）
-        if phase == "cellar" and pa.get("player_id") == self.my_id:
+        # 任意捨て札→同数引き直し
+        if phase == "discard_draw" and pa.get("player_id") == self.my_id:
             return True, {
-                "reason": "cellar",
+                "reason": "discard_draw",
                 "phase": phase,
                 "pending_action": pa,
-                "description": "密偵網による任意捨て札（同枚数引き直し）",
+                "description": "任意捨て札（同枚数引き直し）",
             }
 
-        # 勅許工房によるカード獲得（自分のターン）
+        # カード獲得
         if phase == "gain" and pa.get("player_id") == self.my_id:
             return True, {
                 "reason": "gain",
                 "phase": phase,
                 "pending_action": pa,
-                "description": f"勅許工房によるカード獲得（コスト{pa.get('max_cost', 4)}以下）",
+                "description": f"カード獲得（コスト{pa.get('max_cost', 4)}以下）",
+            }
+
+        # 廃棄選択
+        if phase == "trash" and pa.get("player_id") == self.my_id:
+            return True, {
+                "reason": "trash",
+                "phase": phase,
+                "pending_action": pa,
+                "description": f"カード廃棄（{pa.get('type', 'trash')}）",
+            }
+
+        # デッキトップ選択 / プレイ判断 / 公開カード処理
+        if phase == "topdeck" and pa.get("player_id") == self.my_id:
+            pa_type = pa.get("type", "")
+            desc_map = {
+                "topdeck_from_hand": "手札1枚をデッキトップに置く",
+                "topdeck_from_discard": "捨て札1枚をデッキトップに置く（スキップ可）",
+                "play_revealed_action": f"公開されたアクション {pa.get('revealed_card', '?')} をプレイするか選択",
+                "reveal_trash_discard_topdeck": "公開カードの処理を選択（廃棄/捨て/戻す）",
+            }
+            return True, {
+                "reason": pa_type,
+                "phase": phase,
+                "pending_action": pa,
+                "description": desc_map.get(pa_type, "デッキトップ選択"),
             }
 
         # 自分のターン
@@ -136,7 +165,7 @@ class Bridge:
                     "name_en": c.get("name_en", cid),
                     "type": c.get("type", "?"),
                     "cost": c.get("cost", 0),
-                    "description": c.get("description", ""),
+                    "effects_text": build_effect_text(c),
                 })
 
         supply_detail = {}
@@ -149,7 +178,7 @@ class Bridge:
                     "count": cnt,
                     "cost": c.get("cost", 0),
                     "type": c.get("type", "?"),
-                    "description": c.get("description", ""),
+                    "effects_text": build_effect_text(c),
                 }
 
         opp_summary = []
@@ -349,21 +378,11 @@ async def ws_loop(game_id: str, name: str, do_start: bool, base_url: str):
 
 def run_bridge(game_id: str, name: str, do_start: bool, base_url: str, port: int):
     loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
-    # FastAPI を別スレッドで起動
     config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning", loop="none")
     server = uvicorn.Server(config)
 
-    def run_api():
-        # FastAPI 用のイベントループを設定
-        import asyncio as _asyncio
-        _asyncio.set_event_loop(loop)
-        loop.run_until_complete(server.serve())
-
-    # WebSocket ループをメインループで実行
-    asyncio.set_event_loop(loop)
-
-    # uvicorn を同じループで動かす
     async def run_all():
         ws_task = asyncio.create_task(
             ws_loop(game_id, name, do_start, base_url)

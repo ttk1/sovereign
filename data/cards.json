@@ -13,7 +13,7 @@
       "type": "treasure",
       "cost": 0,
       "coin_value": 1,
-      "description": "+1 コイン",
+      "description": "",
       "color": "#b87333",
       "icon": "🪙"
     },
@@ -24,7 +24,7 @@
       "type": "treasure",
       "cost": 3,
       "coin_value": 2,
-      "description": "+2 コイン",
+      "description": "",
       "color": "#c0c0c0",
       "icon": "⚪"
     },
@@ -35,7 +35,7 @@
       "type": "treasure",
       "cost": 6,
       "coin_value": 3,
-      "description": "+3 コイン",
+      "description": "",
       "color": "#ffd700",
       "icon": "✨"
     },
@@ -46,7 +46,7 @@
       "type": "victory",
       "cost": 2,
       "victory_points": 1,
-      "description": "1 勝利点",
+      "description": "",
       "color": "#228b22",
       "icon": "🌾"
     },
@@ -57,7 +57,7 @@
       "type": "victory",
       "cost": 5,
       "victory_points": 3,
-      "description": "3 勝利点",
+      "description": "",
       "color": "#2e8b57",
       "icon": "🏯"
     },
@@ -68,7 +68,7 @@
       "type": "victory",
       "cost": 8,
       "victory_points": 6,
-      "description": "6 勝利点",
+      "description": "",
       "color": "#006400",
       "icon": "👑"
     },
@@ -79,7 +79,7 @@
       "type": "action",
       "subtype": "action",
       "cost": 4,
-      "description": "帝国全土を巡察し、広く情報を集める。+3 カードを引く, +1 購入",
+      "description": "帝国全土を巡察し、広く情報を集める。",
       "color": "#5f7a61",
       "icon": "🧭",
       "effects": [
@@ -94,7 +94,7 @@
       "type": "action",
       "subtype": "action",
       "cost": 3,
-      "description": "将軍たちを召集し、矢継ぎ早に命令を下す。+2 アクション, +1 コイン",
+      "description": "将軍たちを召集し、矢継ぎ早に命令を下す。",
       "color": "#8b0000",
       "icon": "🗡️",
       "effects": [
@@ -109,7 +109,7 @@
       "type": "action",
       "subtype": "action",
       "cost": 5,
-      "description": "帝都の中枢で取引が活発に行われる。+3 カードを引く, +1 アクション, +1 コイン",
+      "description": "帝都の中枢で取引が活発に行われる。",
       "color": "#cd853f",
       "icon": "🏛️",
       "effects": [
@@ -125,7 +125,7 @@
       "type": "action",
       "subtype": "attack",
       "cost": 5,
-      "description": "覇者の名のもとに諸侯を圧する。+3 コイン。他プレイヤーは手札が2枚になるまで捨てる",
+      "description": "覇者の名のもとに諸侯を圧する。",
       "color": "#7a1a1a",
       "icon": "⚔️",
       "effects": [
@@ -140,7 +140,7 @@
       "type": "action",
       "subtype": "reaction",
       "cost": 3,
-      "description": "堅牢な城壁が侵略を阻む。+1 カードを引く, +1 アクション。攻撃をリアクションで無効化する",
+      "description": "堅牢な城壁が侵略を阻む。",
       "color": "#4682b4",
       "icon": "🏰",
       "effects": [
@@ -156,7 +156,7 @@
       "type": "action",
       "subtype": "action",
       "cost": 4,
-      "description": "辺境に隊を送り、財を持ち帰らせる。+2 購入, +2 コイン",
+      "description": "辺境に隊を送り、財を持ち帰らせる。",
       "color": "#6b8e23",
       "icon": "🗺️",
       "effects": [
@@ -171,7 +171,7 @@
       "type": "action",
       "subtype": "action",
       "cost": 5,
-      "description": "帝国の叡智を記した書に目を通し、次の策を練る。+2 カードを引く, +1 アクション, +1 購入",
+      "description": "帝国の叡智を記した書に目を通し、次の策を練る。",
       "color": "#4b0082",
       "icon": "📖",
       "effects": [
@@ -187,7 +187,7 @@
       "type": "action",
       "subtype": "action",
       "cost": 2,
-      "description": "諜報員が古い情報を捨て、新たな情報を持ち帰る。+2 アクション。好きな枚数捨てて同数引く",
+      "description": "諜報員が古い情報を捨て、新たな情報を持ち帰る。",
       "color": "#696969",
       "icon": "🕵️",
       "effects": [
@@ -202,7 +202,7 @@
       "type": "action",
       "subtype": "action",
       "cost": 3,
-      "description": "勅許状を持つ職人が要望の品を仕立てる。コスト6以下のカードを1枚獲得",
+      "description": "勅許状を持つ職人が要望の品を仕立てる。",
       "color": "#a0522d",
       "icon": "🔨",
       "effects": [
@@ -216,7 +216,7 @@
       "type": "action",
       "subtype": "action",
       "cost": 5,
-      "description": "皇帝の御前に重臣が集い、帝国の命運を議する。+1 カードを引く, +2 アクション, +2 コイン",
+      "description": "皇帝の御前に重臣が集い、帝国の命運を議する。",
       "color": "#8b6914",
       "icon": "🏯",
       "effects": [

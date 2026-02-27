@@ -18,6 +18,18 @@ docker compose up --build
 
 コードを編集するとサーバーがホットリロードされます。
 
+#### カードセットを指定して起動
+
+環境変数 `CARDS` で `data/` 内のカード定義ファイルを切り替えられます。
+
+```bash
+# デフォルト（cards.json）
+docker compose up
+
+# 別のカードセットを使う場合
+CARDS=my_cards.json docker compose up
+```
+
 ### 停止
 
 ```bash
@@ -87,6 +99,16 @@ sovereign/
 | `attack_discard_to` | 他プレイヤーの手札を減らす | 残す枚数 |
 | `discard_draw` | 捨てて同数引く | 0 |
 | `gain_card_up_to` | コスト以下のカードを獲得 | 最大コスト |
+| `trash` | 手札からカードを廃棄 | 最大枚数 |
+| `trash_and_gain` | 手札1枚を廃棄し、コスト+N以下のカードを獲得 | コスト加算値 |
+| `trash_treasure_gain_treasure` | 財宝を廃棄し、コスト+N以下の財宝を手札に獲得 | コスト加算値 |
+| `trash_copper_for_coin` | 最安財宝を廃棄してコインを得る | コイン数 |
+| `opponents_draw` | 他プレイヤー全員がカードを引く | 枚数 |
+| `gain_card_to_hand` | コスト以下のカードを手札に獲得→手札1枚をデッキトップに | 最大コスト |
+| `topdeck_from_discard` | 捨て札から1枚をデッキトップに置く（任意） | 0 |
+| `discard_top_play_action` | デッキトップ1枚を捨て、アクションならプレイ可 | 0 |
+| `gain_treasure_topdeck_attack_victory` | 財宝をデッキトップに獲得、他者は勝利点をデッキトップに | コスト |
+| `reveal_trash_discard_topdeck` | デッキトップN枚を公開し、各々を廃棄/捨て/戻す | 枚数 |
 
 ### リアクション
 
@@ -174,7 +196,7 @@ sovereign/
 |--------|------|
 | `my_turn` | 自分のターン（action / buy フェーズ） |
 | `discard` | 攻撃による強制捨て札（`pending_action.discard_to` 枚まで減らす） |
-| `cellar` | 任意捨て→同数引き直し |
+| `discard_draw` | 任意捨て→同数引き直し |
 | `gain` | カード獲得選択（`pending_action.max_cost` 以下） |
 
 #### `/action` のリクエスト形式

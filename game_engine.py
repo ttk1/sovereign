@@ -4,9 +4,6 @@ Sovereign - Game Engine
 """
 
 import random
-import json
-import copy
-import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
@@ -18,9 +15,11 @@ class Phase(str, Enum):
     CLEANUP = "cleanup"
     WAITING = "waiting"
     GAME_OVER = "game_over"
-    DISCARD = "discard"  # Waiting for discard selection (edict etc.)
-    GAIN = "gain"        # Waiting for card gain selection (chartered etc.)
-    CELLAR = "cellar"    # Waiting for cellar discard selection
+    DISCARD = "discard"  # Waiting for discard selection (attack)
+    GAIN = "gain"        # Waiting for card gain selection
+    DISCARD_DRAW = "discard_draw"  # Waiting for discard-draw selection
+    TRASH = "trash"      # Waiting for trash card selection
+    TOPDECK = "topdeck"  # Waiting for topdeck card selection
 
 
 class CardData:
@@ -226,12 +225,12 @@ class Game:
             elif etype == "attack_discard_to":
                 result["attack"] = self._resolve_militia_attack(player, amount)
             elif etype == "discard_draw":
-                # Cellar: enter discard selection phase
-                self.phase = Phase.CELLAR
-                self.pending_action = {"type": "cellar", "player_id": player.id}
+                # Enter discard-draw selection phase
+                self.phase = Phase.DISCARD_DRAW
+                self.pending_action = {"type": "discard_draw", "player_id": player.id}
                 result["awaiting_discard"] = True
             elif etype == "gain_card_up_to":
-                # Workshop: enter gain selection phase
+                # Enter gain selection phase
                 self.phase = Phase.GAIN
                 self.pending_action = {
                     "type": "gain",
@@ -239,20 +238,130 @@ class Game:
                     "max_cost": amount
                 }
                 result["awaiting_gain"] = True
+            elif etype == "trash":
+                # Trash up to N cards from hand
+                self.phase = Phase.TRASH
+                self.pending_action = {
+                    "type": "trash",
+                    "player_id": player.id,
+                    "max_cards": amount,
+                }
+                result["awaiting_trash"] = True
+            elif etype == "trash_and_gain":
+                # Trash 1 card, gain card costing up to trashed + N
+                self.phase = Phase.TRASH
+                self.pending_action = {
+                    "type": "trash_and_gain",
+                    "player_id": player.id,
+                    "cost_bonus": amount,
+                }
+                result["awaiting_trash"] = True
+            elif etype == "trash_treasure_gain_treasure":
+                # Trash a treasure, gain treasure costing up to trashed + N to hand
+                self.phase = Phase.TRASH
+                self.pending_action = {
+                    "type": "trash_treasure_gain_treasure",
+                    "player_id": player.id,
+                    "cost_bonus": amount,
+                }
+                result["awaiting_trash"] = True
+            elif etype == "trash_copper_for_coin":
+                # Auto-trash the cheapest treasure for +N coins
+                cheapest_id = self._find_cheapest_treasure_id()
+                if cheapest_id and cheapest_id in player.hand:
+                    cname = self.card_data.get(cheapest_id).get("name", cheapest_id)
+                    player.hand.remove(cheapest_id)
+                    self.trash.append(cheapest_id)
+                    player.coins += amount
+                    self._log(f"  → {cname} を廃棄して +{amount} コイン")
+                else:
+                    self._log("  → 廃棄できるカードがない")
+            elif etype == "opponents_draw":
+                # All other players draw N cards
+                for p in self.players:
+                    if p.id != player.id:
+                        drawn = p.draw_cards(amount)
+                        self._log(f"  → {p.name} が {len(drawn)} 枚ドロー")
+            elif etype == "gain_card_to_hand":
+                # Gain a card costing up to N to hand
+                self.phase = Phase.GAIN
+                self.pending_action = {
+                    "type": "gain_to_hand",
+                    "player_id": player.id,
+                    "max_cost": amount,
+                }
+                result["awaiting_gain"] = True
+            elif etype == "topdeck_from_discard":
+                # Put a card from discard pile on top of deck
+                if player.discard_pile:
+                    self.phase = Phase.TOPDECK
+                    self.pending_action = {
+                        "type": "topdeck_from_discard",
+                        "player_id": player.id,
+                    }
+                    result["awaiting_topdeck"] = True
+            elif etype == "discard_top_play_action":
+                # Discard top card, if action may play it
+                if not player.deck:
+                    player.shuffle_discard_into_deck()
+                if player.deck:
+                    top = player.deck.pop()
+                    top_card = self.card_data.get(top)
+                    player.discard_pile.append(top)
+                    self._log(f"  → {top_card.get('name', top)} を公開")
+                    if top_card.get("type") == "action":
+                        self.phase = Phase.TOPDECK
+                        self.pending_action = {
+                            "type": "play_revealed_action",
+                            "player_id": player.id,
+                            "revealed_card": top,
+                        }
+                        result["awaiting_play_revealed"] = True
+                    else:
+                        self._log(f"  → アクションではないので捨て札に")
+            elif etype == "gain_treasure_topdeck_attack_victory":
+                # Gain a treasure of the given cost to topdeck, opponents topdeck a victory card
+                treasure_id = self._find_treasure_by_cost(amount)
+                if treasure_id and self.supply.get(treasure_id, 0) > 0:
+                    self.supply[treasure_id] -= 1
+                    player.deck.append(treasure_id)
+                    tname = self.card_data.get(treasure_id).get("name", treasure_id)
+                    self._log(f"  → {tname} をデッキトップに獲得")
+                result["attack"] = self._resolve_bureaucrat_attack(player)
+            elif etype == "reveal_trash_discard_topdeck":
+                # Reveal top N cards, trash/discard/topdeck each
+                revealed = []
+                for _ in range(amount):
+                    if not player.deck:
+                        player.shuffle_discard_into_deck()
+                    if player.deck:
+                        revealed.append(player.deck.pop())
+                if revealed:
+                    names = [self.card_data.get(c).get("name", c) for c in revealed]
+                    self._log(f"  → {', '.join(names)} を公開")
+                    self.phase = Phase.TOPDECK
+                    self.pending_action = {
+                        "type": "reveal_trash_discard_topdeck",
+                        "player_id": player.id,
+                        "revealed_cards": revealed,
+                    }
+                    result["awaiting_reveal_process"] = True
 
         return result
+
+    def _has_block_reaction(self, player: Player) -> bool:
+        """手札に攻撃無効化リアクションを持っているか。"""
+        return any(
+            self.card_data.get(c).get("reaction") == "block_attack"
+            for c in player.hand
+        )
 
     def _resolve_militia_attack(self, attacker: Player, discard_to: int) -> dict:
         attacked = {}
         for p in self.players:
             if p.id == attacker.id:
                 continue
-            # Check for rampart reaction
-            has_moat = any(
-                self.card_data.get(c).get("reaction") == "block_attack"
-                for c in p.hand
-            )
-            if has_moat:
+            if self._has_block_reaction(p):
                 self._log(f"  {p.name} はリアクションカードでアタックを防いだ")
                 attacked[p.id] = {"blocked": True}
                 continue
@@ -264,7 +373,7 @@ class Game:
             # AI auto-discard for simplicity, or set pending
             self.phase = Phase.DISCARD
             self.pending_action = {
-                "type": "militia_discard",
+                "type": "attack_discard",
                 "target_player_id": p.id,
                 "discard_to": discard_to,
                 "attacker_id": attacker.id,
@@ -272,10 +381,7 @@ class Game:
                     op.id for op in self.players
                     if op.id != attacker.id and op.id != p.id
                     and len(op.hand) > discard_to
-                    and not any(
-                        self.card_data.get(c).get("reaction") == "block_attack"
-                        for c in op.hand
-                    )
+                    and not self._has_block_reaction(op)
                 ]
             }
             attacked[p.id] = {"must_discard_to": discard_to}
@@ -283,13 +389,249 @@ class Game:
 
         return attacked
 
+
+    def _find_cheapest_treasure_id(self) -> Optional[str]:
+        """Find the cheapest treasure card ID in the card data."""
+        treasures = [
+            (cid, c.get("cost", 0))
+            for cid, c in self.card_data.cards_by_id.items()
+            if c.get("type") == "treasure"
+        ]
+        if not treasures:
+            return None
+        return min(treasures, key=lambda x: x[1])[0]
+
+    def _find_treasure_by_cost(self, cost: int) -> Optional[str]:
+        """Find a treasure card ID with the given cost."""
+        for cid, c in self.card_data.cards_by_id.items():
+            if c.get("type") == "treasure" and c.get("cost", 0) == cost:
+                return cid
+        return None
+
+    def _resolve_bureaucrat_attack(self, attacker: Player) -> dict:
+        """Each opponent topdecks a victory card from hand (attack)."""
+        attacked = {}
+        for p in self.players:
+            if p.id == attacker.id:
+                continue
+            if self._has_block_reaction(p):
+                attacked[p.id] = {"blocked": True}
+                self._log(f"  → {p.name} はリアクションで防御した")
+                continue
+            # Find victory cards in hand, pick cheapest
+            victory_in_hand = [
+                cid for cid in p.hand
+                if self.card_data.get(cid).get("type") == "victory"
+            ]
+            if victory_in_hand:
+                # Auto-select cheapest victory card
+                chosen = min(victory_in_hand, key=lambda c: self.card_data.get(c).get("cost", 0))
+                p.hand.remove(chosen)
+                p.deck.append(chosen)
+                cname = self.card_data.get(chosen).get("name", chosen)
+                attacked[p.id] = {"topdecked": chosen}
+                self._log(f"  → {p.name} が {cname} をデッキトップに置いた")
+            else:
+                attacked[p.id] = {"no_victory": True}
+                self._log(f"  → {p.name} は勝利点カードを持っていない（手札公開）")
+        return attacked
+
+    def handle_topdeck_selection(self, player_id: str, card_id: Optional[str]) -> dict:
+        """Handle topdeck card selection (from hand or discard)."""
+        if not self.pending_action:
+            return {"error": "待機中のアクションがありません"}
+        pa = self.pending_action
+        pa_type = pa["type"]
+        if player_id != pa["player_id"]:
+            return {"error": "あなたのアクションではありません"}
+        player = self._get_player(player_id)
+
+        if pa_type == "topdeck_from_hand":
+            if not card_id or card_id not in player.hand:
+                return {"error": "手札からカードを選んでください"}
+            player.hand.remove(card_id)
+            player.deck.append(card_id)
+
+        elif pa_type == "topdeck_from_discard":
+            if not card_id:
+                self._log(f"{player.name} はスキップした")
+                self.pending_action = None
+                self.phase = Phase.ACTION
+                return {"ok": True}
+            if card_id not in player.discard_pile:
+                return {"error": "捨て札にないカードです"}
+            player.discard_pile.remove(card_id)
+            player.deck.append(card_id)
+
+        else:
+            return {"error": "不明なアクション"}
+
+        card = self.card_data.get(card_id)
+        self._log(f"{player.name} が {card.get('name', card_id)} をデッキトップに置いた")
+        self.pending_action = None
+        self.phase = Phase.ACTION
+        return {"ok": True}
+
+    def handle_vassal_decision(self, player_id: str, play: bool) -> dict:
+        """Handle play decision for a revealed action card."""
+        if not self.pending_action or self.pending_action.get("type") != "play_revealed_action":
+            return {"error": "待機中のアクションがありません"}
+        pa = self.pending_action
+        if player_id != pa["player_id"]:
+            return {"error": "あなたのアクションではありません"}
+        player = self._get_player(player_id)
+        revealed = pa["revealed_card"]
+        card = self.card_data.get(revealed)
+
+        if play:
+            # Move from discard to play area and resolve
+            player.discard_pile.remove(revealed)
+            player.play_area.append(revealed)
+            self._log(f"{player.name} が {card.get('name', revealed)} をプレイ")
+            self.pending_action = None
+            self.phase = Phase.ACTION
+            self._resolve_effects(player, card)
+        else:
+            self._log(f"{player.name} はプレイしなかった")
+            self.pending_action = None
+            self.phase = Phase.ACTION
+
+        return {"ok": True}
+
+    def handle_sentry_decision(self, player_id: str, decisions: list[dict]) -> dict:
+        """Handle trash/discard/topdeck decisions for each revealed card."""
+        if not self.pending_action or self.pending_action.get("type") != "reveal_trash_discard_topdeck":
+            return {"error": "待機中のアクションがありません"}
+        pa = self.pending_action
+        if player_id != pa["player_id"]:
+            return {"error": "あなたのアクションではありません"}
+        player = self._get_player(player_id)
+        revealed = pa["revealed_cards"]
+
+        # Validate all card_ids are in revealed (handle duplicates)
+        decision_ids = sorted([d["card_id"] for d in decisions])
+        if decision_ids != sorted(revealed):
+            return {"error": "公開されたカードと一致しません"}
+
+        topdeck_cards = []
+        for d in decisions:
+            cid = d["card_id"]
+            action = d["action"]
+            cname = self.card_data.get(cid).get("name", cid)
+            if action == "trash":
+                self.trash.append(cid)
+                self._log(f"  → {cname} を廃棄")
+            elif action == "discard":
+                player.discard_pile.append(cid)
+                self._log(f"  → {cname} を捨て札に")
+            elif action == "topdeck":
+                topdeck_cards.append(cid)
+            else:
+                return {"error": f"不明なアクション: {action}"}
+
+        # Put topdeck cards back (order doesn't matter much for 1-2 cards)
+        for cid in topdeck_cards:
+            player.deck.append(cid)
+            cname = self.card_data.get(cid).get("name", cid)
+            self._log(f"  → {cname} をデッキトップに戻した")
+
+        self.pending_action = None
+        self.phase = Phase.ACTION
+        return {"ok": True}
+
+    def handle_trash_selection(self, player_id: str, card_ids: list[str]) -> dict:
+        if not self.pending_action:
+            return {"error": "待機中のアクションがありません"}
+        pa = self.pending_action
+        pa_type = pa["type"]
+        if pa_type == "trash":
+            return self._handle_trash(player_id, card_ids)
+        elif pa_type == "trash_and_gain":
+            return self._handle_trash_and_gain(player_id, card_ids)
+        elif pa_type == "trash_treasure_gain_treasure":
+            return self._handle_trash_treasure(player_id, card_ids)
+        return {"error": "不明なアクション"}
+
+    def _handle_trash(self, player_id: str, card_ids: list[str]) -> dict:
+        """Trash up to max_cards from hand."""
+        pa = self.pending_action
+        if player_id != pa["player_id"]:
+            return {"error": "あなたのアクションではありません"}
+        player = self._get_player(player_id)
+        max_cards = pa["max_cards"]
+        if len(card_ids) > max_cards:
+            return {"error": f"最大{max_cards}枚です"}
+        for cid in card_ids:
+            if cid not in player.hand:
+                return {"error": f"{cid} は手札にありません"}
+        for cid in card_ids:
+            player.hand.remove(cid)
+            self.trash.append(cid)
+        if card_ids:
+            self._log(f"{player.name} が {len(card_ids)} 枚廃棄")
+        self.pending_action = None
+        self.phase = Phase.ACTION
+        return {"ok": True}
+
+    def _handle_trash_and_gain(self, player_id: str, card_ids: list[str]) -> dict:
+        """Trash 1 card, then gain card costing up to trashed_cost + bonus."""
+        pa = self.pending_action
+        if player_id != pa["player_id"]:
+            return {"error": "あなたのアクションではありません"}
+        if len(card_ids) != 1:
+            return {"error": "1枚選んでください"}
+        player = self._get_player(player_id)
+        cid = card_ids[0]
+        if cid not in player.hand:
+            return {"error": f"{cid} は手札にありません"}
+        card = self.card_data.get(cid)
+        trashed_cost = card.get("cost", 0)
+        player.hand.remove(cid)
+        self.trash.append(cid)
+        self._log(f"{player.name} が {card.get('name', cid)} を廃棄")
+        # Transition to gain phase
+        self.phase = Phase.GAIN
+        self.pending_action = {
+            "type": "gain",
+            "player_id": player_id,
+            "max_cost": trashed_cost + pa["cost_bonus"],
+        }
+        return {"ok": True, "awaiting_gain": True}
+
+    def _handle_trash_treasure(self, player_id: str, card_ids: list[str]) -> dict:
+        """Trash a treasure, gain treasure costing up to trashed_cost + bonus to hand."""
+        pa = self.pending_action
+        if player_id != pa["player_id"]:
+            return {"error": "あなたのアクションではありません"}
+        if len(card_ids) != 1:
+            return {"error": "1枚選んでください"}
+        player = self._get_player(player_id)
+        cid = card_ids[0]
+        if cid not in player.hand:
+            return {"error": f"{cid} は手札にありません"}
+        card = self.card_data.get(cid)
+        if card.get("type") != "treasure":
+            return {"error": "財宝カードを選んでください"}
+        trashed_cost = card.get("cost", 0)
+        player.hand.remove(cid)
+        self.trash.append(cid)
+        self._log(f"{player.name} が {card.get('name', cid)} を廃棄")
+        # Transition to gain phase (treasure only, to hand)
+        self.phase = Phase.GAIN
+        self.pending_action = {
+            "type": "gain_treasure_to_hand",
+            "player_id": player_id,
+            "max_cost": trashed_cost + pa["cost_bonus"],
+        }
+        return {"ok": True, "awaiting_gain": True}
+
     def handle_discard_selection(self, player_id: str, card_ids: list[str]) -> dict:
         if not self.pending_action:
             return {"error": "待機中のアクションがありません"}
 
-        if self.pending_action["type"] == "militia_discard":
+        if self.pending_action["type"] == "attack_discard":
             return self._handle_militia_discard(player_id, card_ids)
-        elif self.pending_action["type"] == "cellar":
+        elif self.pending_action["type"] == "discard_draw":
             return self._handle_cellar_discard(player_id, card_ids)
 
         return {"error": "不明なアクション"}
@@ -322,7 +664,7 @@ class Game:
             next_player = self._get_player(next_target)
             if next_player and len(next_player.hand) > discard_to:
                 self.pending_action = {
-                    "type": "militia_discard",
+                    "type": "attack_discard",
                     "target_player_id": next_target,
                     "discard_to": discard_to,
                     "attacker_id": pa["attacker_id"],
@@ -357,7 +699,8 @@ class Game:
         return {"ok": True, "drawn": drawn, "discarded": count}
 
     def handle_gain_selection(self, player_id: str, card_id: str) -> dict:
-        if not self.pending_action or self.pending_action["type"] != "gain":
+        pa_type = self.pending_action.get("type") if self.pending_action else None
+        if pa_type not in ("gain", "gain_treasure_to_hand", "gain_to_hand"):
             return {"error": "獲得待ちではありません"}
         if player_id != self.pending_action["player_id"]:
             return {"error": "あなたのアクションではありません"}
@@ -368,13 +711,30 @@ class Game:
             return {"error": "不明なカードです"}
         if card.get("cost", 0) > max_cost:
             return {"error": f"コスト{max_cost}以下のカードを選んでください"}
+        if pa_type == "gain_treasure_to_hand" and card.get("type") != "treasure":
+            return {"error": "財宝カードを選んでください"}
         if self.supply.get(card_id, 0) <= 0:
             return {"error": "サプライにありません"}
 
         player = self._get_player(player_id)
         self.supply[card_id] -= 1
-        player.discard_pile.append(card_id)
-        self._log(f"{player.name} が {card.get('name', card_id)} を獲得")
+
+        gain_to_hand = pa_type in ("gain_to_hand", "gain_treasure_to_hand")
+        if gain_to_hand:
+            player.hand.append(card_id)
+            self._log(f"{player.name} が {card.get('name', card_id)} を手札に獲得")
+        else:
+            player.discard_pile.append(card_id)
+            self._log(f"{player.name} が {card.get('name', card_id)} を獲得")
+
+        if pa_type == "gain_to_hand":
+            # After gaining to hand, must topdeck a card from hand
+            self.phase = Phase.TOPDECK
+            self.pending_action = {
+                "type": "topdeck_from_hand",
+                "player_id": player_id,
+            }
+            return {"ok": True, "gained": card_id, "awaiting_topdeck": True}
 
         self.pending_action = None
         self.phase = Phase.ACTION
@@ -408,6 +768,9 @@ class Game:
         player = self._get_player(player_id)
         if not player or player != self.current_player:
             return {"error": "あなたのターンではありません"}
+
+        if self.phase not in (Phase.ACTION, Phase.BUY):
+            return {"error": "財宝カードをプレイできるフェーズではありません"}
 
         if self.phase == Phase.ACTION:
             self.phase = Phase.BUY
@@ -547,13 +910,10 @@ class Game:
         }
 
         if self.pending_action:
+            # remaining_targets is internal state, exclude from client
             state["pending_action"] = {
-                "type": self.pending_action.get("type"),
-                "target_player_id": self.pending_action.get("target_player_id"),
-                "player_id": self.pending_action.get("player_id"),
-                "attacker_id": self.pending_action.get("attacker_id"),
-                "max_cost": self.pending_action.get("max_cost"),
-                "discard_to": self.pending_action.get("discard_to"),
+                k: v for k, v in self.pending_action.items()
+                if k != "remaining_targets"
             }
 
         for p in self.players:
@@ -571,6 +931,11 @@ class Game:
             }
             if p.id == for_player_id:
                 pdata["hand"] = p.hand
+                # Expose discard pile contents during topdeck_from_discard
+                if (self.pending_action
+                    and self.pending_action.get("type") == "topdeck_from_discard"
+                    and self.pending_action.get("player_id") == p.id):
+                    pdata["discard_pile"] = p.discard_pile
             state["players"].append(pdata)
 
         if self.phase == Phase.GAME_OVER:

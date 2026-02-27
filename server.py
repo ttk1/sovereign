@@ -9,13 +9,12 @@ Usage:
 import json
 import os
 import uuid
-import asyncio
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse
 
 from game_engine import Game, CardData, Phase
 
@@ -41,11 +40,12 @@ def _resolve_card_path() -> Path:
 
 CARD_DATA_PATH = _resolve_card_path()
 
-def load_card_data(path: Path = CARD_DATA_PATH) -> CardData:
+def _load_raw_card_data(path: Path = CARD_DATA_PATH) -> dict:
     with open(path, "r", encoding="utf-8") as f:
-        return CardData(json.load(f))
+        return json.load(f)
 
-card_data = load_card_data()
+_raw_card_data = _load_raw_card_data()
+card_data = CardData(_raw_card_data)
 print(f"[server] cards: {CARD_DATA_PATH}")
 
 # ── App ─────────────────────────────────────────────────────────
@@ -66,8 +66,7 @@ async def index():
 @app.get("/api/cards")
 async def get_cards():
     """Return all card definitions (for UI rendering)."""
-    with open(CARD_DATA_PATH, encoding="utf-8") as f:
-        return JSONResponse(json.load(f))
+    return JSONResponse(_raw_card_data)
 
 
 @app.post("/api/games")
@@ -129,6 +128,35 @@ async def send_error(ws: WebSocket, message: str):
     await ws.send_json({"type": "error", "message": message})
 
 
+def _handle_game_action(game: Game, player_id: str, action: str, data: dict) -> dict | None:
+    """Dispatch a game action and return the result, or None if unknown."""
+    if action == "play_action":
+        return game.play_action(player_id, data.get("card_id"))
+    elif action == "play_treasure":
+        return game.play_treasure(player_id, data.get("card_id"))
+    elif action == "play_all_treasures":
+        return game.play_all_treasures(player_id)
+    elif action == "buy":
+        return game.buy_card(player_id, data.get("card_id"))
+    elif action == "skip_action":
+        return game.skip_action_phase(player_id)
+    elif action == "end_turn":
+        return game.end_turn(player_id)
+    elif action == "discard_selection":
+        return game.handle_discard_selection(player_id, data.get("card_ids", []))
+    elif action == "gain_selection":
+        return game.handle_gain_selection(player_id, data.get("card_id"))
+    elif action == "trash_selection":
+        return game.handle_trash_selection(player_id, data.get("card_ids", []))
+    elif action == "topdeck_selection":
+        return game.handle_topdeck_selection(player_id, data.get("card_id"))
+    elif action == "vassal_decision":
+        return game.handle_vassal_decision(player_id, data.get("play", False))
+    elif action == "sentry_decision":
+        return game.handle_sentry_decision(player_id, data.get("decisions", []))
+    return None
+
+
 @app.websocket("/ws/{game_id}")
 async def websocket_endpoint(websocket: WebSocket, game_id: str):
     await websocket.accept()
@@ -180,66 +208,13 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
                     continue
                 await broadcast(game_id)
 
-            elif action == "play_action":
-                card_id = data.get("card_id")
-                result = game.play_action(player_id, card_id)
-                if "error" in result:
-                    await send_error(websocket, result["error"])
-                else:
-                    await broadcast(game_id)
-
-            elif action == "play_treasure":
-                card_id = data.get("card_id")
-                result = game.play_treasure(player_id, card_id)
-                if "error" in result:
-                    await send_error(websocket, result["error"])
-                else:
-                    await broadcast(game_id)
-
-            elif action == "play_all_treasures":
-                result = game.play_all_treasures(player_id)
-                if "error" in result:
-                    await send_error(websocket, result["error"])
-                else:
-                    await broadcast(game_id)
-
-            elif action == "buy":
-                card_id = data.get("card_id")
-                result = game.buy_card(player_id, card_id)
-                if "error" in result:
-                    await send_error(websocket, result["error"])
-                else:
-                    await broadcast(game_id)
-
-            elif action == "skip_action":
-                result = game.skip_action_phase(player_id)
-                if "error" in result:
-                    await send_error(websocket, result["error"])
-                else:
-                    await broadcast(game_id)
-
-            elif action == "end_turn":
-                result = game.end_turn(player_id)
-                if "error" in result:
-                    await send_error(websocket, result["error"])
-                else:
-                    await broadcast(game_id)
-
-            elif action == "discard_selection":
-                card_ids = data.get("card_ids", [])
-                result = game.handle_discard_selection(player_id, card_ids)
-                if "error" in result:
-                    await send_error(websocket, result["error"])
-                else:
-                    await broadcast(game_id)
-
-            elif action == "gain_selection":
-                card_id = data.get("card_id")
-                result = game.handle_gain_selection(player_id, card_id)
-                if "error" in result:
-                    await send_error(websocket, result["error"])
-                else:
-                    await broadcast(game_id)
+            else:
+                result = _handle_game_action(game, player_id, action, data)
+                if result is not None:
+                    if "error" in result:
+                        await send_error(websocket, result["error"])
+                    else:
+                        await broadcast(game_id)
 
     except WebSocketDisconnect:
         if player_id and game_id in connections:

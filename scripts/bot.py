@@ -18,6 +18,10 @@ import urllib.request
 import websockets
 import os
 import re
+import sys
+
+sys.path.insert(0, os.path.dirname(__file__))
+from card_utils import build_effect_text
 
 
 def fetch_cards(base_url: str) -> dict[str, dict]:
@@ -244,8 +248,10 @@ def _buy_score(cid: str, coins: int, supply: dict, cards: dict[str, dict], endga
 
 def choose_buy(coins: int, supply: dict, cards: dict[str, dict], me: dict, state: dict) -> str | None:
     endgame = is_endgame(supply, cards)
-    candidates = [(cid, _buy_score(cid, coins, supply, cards, endgame))
-                  for cid in supply if _buy_score(cid, coins, supply, cards, endgame) > 0]
+    candidates = [
+        (cid, score) for cid in supply
+        if (score := _buy_score(cid, coins, supply, cards, endgame)) > 0
+    ]
     if not candidates:
         return None
     return max(candidates, key=lambda x: x[1])[0]
@@ -358,7 +364,7 @@ def build_state_prompt(state: dict, me: dict, cards: dict[str, dict], phase: str
     hand_info = []
     for cid in hand:
         c = cards.get(cid, {})
-        hand_info.append(f"  - {cid} ({c.get('name', cid)}): {c.get('description', '')}")
+        hand_info.append(f"  - {cid} ({c.get('name', cid)}): {build_effect_text(c)}")
 
     supply_info = []
     for cid, cnt in supply.items():
@@ -366,7 +372,7 @@ def build_state_prompt(state: dict, me: dict, cards: dict[str, dict], phase: str
             c = cards.get(cid, {})
             supply_info.append(
                 f"  - {cid} ({c.get('name', cid)}): 残{cnt}枚, "
-                f"コスト{c.get('cost', '?')}, {c.get('description', '')}"
+                f"コスト{c.get('cost', '?')}, {build_effect_text(c)}"
             )
 
     opponents = [p for p in state.get("players", []) if p["id"] != me["id"]]
@@ -448,7 +454,7 @@ def build_state_prompt(state: dict, me: dict, cards: dict[str, dict], phase: str
 {{"action": "discard_selection", "card_ids": ["<card_id>", ...]}}
 """
 
-    elif phase == "cellar":
+    elif phase == "discard_draw":
         prompt += """
 【タスク: 任意捨て札（引き直し）】
 任意の枚数を捨てて、同じ枚数だけ引けます。
@@ -538,7 +544,7 @@ def fallback_decide(phase: str, pa: dict, state: dict, me: dict, cards: dict[str
         card_ids = choose_militia_discards(hand, discard_to, cards)
         return {"action": "discard_selection", "card_ids": card_ids}
 
-    elif phase == "cellar":
+    elif phase == "discard_draw":
         card_ids = choose_cellar_discards(hand, cards)
         return {"action": "discard_selection", "card_ids": card_ids}
 
@@ -547,6 +553,73 @@ def fallback_decide(phase: str, pa: dict, state: dict, me: dict, cards: dict[str
         card_id = choose_gain_card(supply, cards, max_cost)
         if card_id:
             return {"action": "gain_selection", "card_id": card_id}
+
+    elif phase == "trash":
+        pa_type = pa.get("type", "")
+        if pa_type == "trash":
+            # 低コストカード（銅貨・低勝利点）を廃棄
+            copper_count = sum(1 for c in hand if cards.get(c, {}).get("cost", 0) == 0 and cards.get(c, {}).get("type") == "treasure")
+            trash_ids = []
+            coppers_trashed = 0
+            max_cards = pa.get("max_cards", 4)
+            for cid in hand:
+                if len(trash_ids) >= max_cards:
+                    break
+                c = cards.get(cid, {})
+                if c.get("type") == "victory" and c.get("victory_points", 0) <= 1:
+                    trash_ids.append(cid)
+                elif c.get("cost", 0) == 0 and c.get("type") == "treasure" and copper_count - coppers_trashed > 3:
+                    trash_ids.append(cid)
+                    coppers_trashed += 1
+            return {"action": "trash_selection", "card_ids": trash_ids}
+        elif pa_type == "trash_and_gain":
+            # 最安カードを廃棄してアップグレード
+            best = min(hand, key=lambda c: cards.get(c, {}).get("cost", 0))
+            return {"action": "trash_selection", "card_ids": [best]}
+        elif pa_type == "trash_treasure_gain_treasure":
+            # 最安財宝を廃棄してアップグレード
+            treasures = [c for c in hand if cards.get(c, {}).get("type") == "treasure"]
+            if treasures:
+                cheapest = min(treasures, key=lambda c: cards.get(c, {}).get("cost", 0))
+                return {"action": "trash_selection", "card_ids": [cheapest]}
+            return {"action": "trash_selection", "card_ids": []}
+
+    elif phase == "topdeck":
+        pa_type = pa.get("type", "")
+        if pa_type == "topdeck_from_hand":
+            # 勝利点カード優先、なければ最安カードをデッキトップに
+            victories = [c for c in hand if cards.get(c, {}).get("type") == "victory"]
+            if victories:
+                chosen = min(victories, key=lambda c: cards.get(c, {}).get("cost", 0))
+            else:
+                chosen = min(hand, key=lambda c: cards.get(c, {}).get("cost", 0))
+            return {"action": "topdeck_selection", "card_id": chosen}
+        elif pa_type == "topdeck_from_discard":
+            # 捨て札からコスト3以上の最高コストカードをデッキトップに
+            discard_pile = me.get("discard_pile", [])
+            if discard_pile:
+                best = max(discard_pile, key=lambda c: cards.get(c, {}).get("cost", 0))
+                if cards.get(best, {}).get("cost", 0) >= 3:
+                    return {"action": "topdeck_selection", "card_id": best}
+            return {"action": "topdeck_selection", "card_id": None}
+        elif pa_type == "play_revealed_action":
+            # Always play the revealed action
+            return {"action": "vassal_decision", "play": True}
+        elif pa_type == "reveal_trash_discard_topdeck":
+            # Trash estates/coppers, topdeck good cards, discard rest
+            revealed = pa.get("revealed_cards", [])
+            decisions = []
+            for cid in revealed:
+                c = cards.get(cid, {})
+                if c.get("type") == "victory" and c.get("victory_points", 0) <= 1:
+                    decisions.append({"card_id": cid, "action": "trash"})
+                elif c.get("cost", 0) == 0 and c.get("type") == "treasure":
+                    decisions.append({"card_id": cid, "action": "trash"})
+                elif c.get("cost", 0) >= 5:
+                    decisions.append({"card_id": cid, "action": "topdeck"})
+                else:
+                    decisions.append({"card_id": cid, "action": "discard"})
+            return {"action": "sentry_decision", "decisions": decisions}
 
     return None
 
@@ -581,6 +654,14 @@ async def bot(game_id: str, name: str, do_start: bool, base_url: str, use_ai: bo
             await send({"action": "start"})
             await recv()  # state (action)
 
+        # AI またはフォールバックで判断を取得するヘルパー
+        async def decide(phase_key: str, pa: dict, state: dict, me: dict) -> dict | None:
+            if use_ai:
+                decision = await ai_decide(state, me, cards, phase_key, pa)
+                if decision is not None:
+                    return decision
+            return fallback_decide(phase_key, pa, state, me, cards)
+
         # メインループ
         while True:
             msg = await recv()
@@ -605,49 +686,17 @@ async def bot(game_id: str, name: str, do_start: bool, base_url: str, use_ai: bo
             # 自分が応答すべき状況を判定
             is_my_turn = state["current_player"] == me["id"]
             is_my_discard = phase == "discard" and pa.get("target_player_id") == me["id"]
-            is_my_cellar = phase == "cellar" and pa.get("player_id") == me["id"]
-            is_my_gain = phase == "gain" and pa.get("player_id") == me["id"]
+            is_my_pending = pa.get("player_id") == me["id"]
 
-            if not (is_my_turn or is_my_discard or is_my_cellar or is_my_gain):
+            if not (is_my_turn or is_my_discard or (is_my_pending and phase in ("discard_draw", "gain", "trash", "topdeck"))):
                 continue
 
-            # ターン外の強制応答（攻撃の捨て札）
-            if is_my_discard and not is_my_turn:
-                if use_ai:
-                    decision = await ai_decide(state, me, cards, "discard", pa)
-                    if decision is None:
-                        decision = fallback_decide("discard", pa, state, me, cards)
-                else:
-                    decision = fallback_decide("discard", pa, state, me, cards)
-
-                if decision:
-                    print(f"[{name}] → {decision}")
-                    await send(decision)
-                continue
-
-            # 任意捨て引き直し
-            if is_my_cellar:
-                if use_ai:
-                    decision = await ai_decide(state, me, cards, "cellar", pa)
-                    if decision is None:
-                        decision = fallback_decide("cellar", pa, state, me, cards)
-                else:
-                    decision = fallback_decide("cellar", pa, state, me, cards)
-
-                if decision:
-                    print(f"[{name}] → {decision}")
-                    await send(decision)
-                continue
-
-            # カード獲得
-            if is_my_gain:
-                if use_ai:
-                    decision = await ai_decide(state, me, cards, "gain", pa)
-                    if decision is None:
-                        decision = fallback_decide("gain", pa, state, me, cards)
-                else:
-                    decision = fallback_decide("gain", pa, state, me, cards)
-
+            # ターン外の応答（攻撃の捨て札、各種選択フェーズ）
+            if phase in ("discard", "discard_draw", "gain", "trash", "topdeck") and not (is_my_turn and phase in ("action", "buy")):
+                phase_key = phase
+                if is_my_discard and not is_my_turn:
+                    phase_key = "discard"
+                decision = await decide(phase_key, pa, state, me)
                 if decision:
                     print(f"[{name}] → {decision}")
                     await send(decision)
@@ -655,16 +704,8 @@ async def bot(game_id: str, name: str, do_start: bool, base_url: str, use_ai: bo
 
             # 自分のターン（action / buy フェーズ）
             if phase == "action":
-                actions_left = me.get("actions", 0)
-
-                if actions_left > 0:
-                    if use_ai:
-                        decision = await ai_decide(state, me, cards, "action", pa)
-                        if decision is None:
-                            decision = fallback_decide("action", pa, state, me, cards)
-                    else:
-                        decision = fallback_decide("action", pa, state, me, cards)
-
+                if me.get("actions", 0) > 0:
+                    decision = await decide("action", pa, state, me)
                     if decision:
                         print(f"[{name}] → {decision}")
                         await send(decision)
@@ -682,13 +723,7 @@ async def bot(game_id: str, name: str, do_start: bool, base_url: str, use_ai: bo
                     await send({"action": "play_all_treasures"})
                     continue
 
-                if use_ai:
-                    decision = await ai_decide(state, me, cards, "buy", pa)
-                    if decision is None:
-                        decision = fallback_decide("buy", pa, state, me, cards)
-                else:
-                    decision = fallback_decide("buy", pa, state, me, cards)
-
+                decision = await decide("buy", pa, state, me)
                 if decision:
                     print(f"[{name}] → {decision}")
                     await send(decision)

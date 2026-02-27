@@ -71,7 +71,7 @@ def print_state(state: dict):
         print(f"[HAND] ({len(hand)}枚)")
         for c in hand:
             print(f"  {c['id']:12s} [{c.get('type','?'):7s}] cost={c.get('cost',0)}  "
-                  f"{c.get('name_en', c['id'])} - {c.get('description','')[:50]}")
+                  f"{c.get('name_en', c['id'])} - {c.get('effects_text','')[:50]}")
 
     for opp in state.get("opponents", []):
         print(f"[OPP] {opp['name']}  手札{opp['hand_count']}枚  "
@@ -80,7 +80,7 @@ def print_state(state: dict):
     print("[SUPPLY]")
     for cid, info in sorted(supply.items(), key=lambda x: (x[1].get("type",""), x[1].get("cost",0))):
         print(f"  {cid:12s} [{info.get('type','?'):7s}] cost={info.get('cost',0)}  "
-              f"残{info['count']:2d}枚  {info.get('description','')[:45]}")
+              f"残{info['count']:2d}枚  {info.get('effects_text','')[:45]}")
 
     log = state.get("log", [])
     if log:

@@ -260,6 +260,16 @@
   .status-item { display: flex; align-items: center; gap: 0.3rem; }
   .status-item .label { color: var(--text-dim); }
 
+  .my-name-badge {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--accent);
+    padding: 0.25rem 0.7rem;
+    background: rgba(108, 140, 255, 0.1);
+    border: 1px solid rgba(108, 140, 255, 0.3);
+    border-radius: 6px;
+  }
+
   .opponents-row {
     display: flex;
     gap: 0.6rem;
@@ -764,6 +774,7 @@
       <span class="phase-badge" id="phaseBadge"></span>
     </div>
     <div class="status-bar" id="statusBar"></div>
+    <div class="my-name-badge" id="myNameBadge"></div>
   </div>
 
   <div class="opponents-row" id="opponents"></div>
@@ -822,6 +833,14 @@ let cardDefs = {};
 let gameState = null;
 let selectedDiscards = new Set();
 let discardMode = false;
+let trashMode = false;
+let topdeckMode = false;
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
 
 const effectLabels = {
   draw:              n => `+${n} カードを引く`,
@@ -830,9 +849,19 @@ const effectLabels = {
   coin:              n => `+${n} コイン`,
   coin_value:        n => `+${n} コイン`,
   victory_points:    n => `${n} 勝利点`,
-  attack_discard_to: n => `他者: 手札を${n}枚に`,
-  discard_draw:      _ => `任意枚捨てて同数引く`,
+  attack_discard_to: n => `【攻撃】他者は手札${n}枚まで捨てる`,
+  discard_draw:      _ => `好きな枚数を捨て、同数引く`,
   gain_card_up_to:   n => `コスト${n}以下を獲得`,
+  trash:                         n => `手札${n}枚まで廃棄`,
+  trash_and_gain:                n => `1枚廃棄→コスト+${n}以下を獲得`,
+  trash_treasure_gain_treasure:  n => `財宝廃棄→コスト+${n}以下の財宝を手札に`,
+  trash_copper_for_coin:         n => `最安財宝を廃棄で+${n}コイン`,
+  opponents_draw:                n => `他者: +${n} ドロー`,
+  gain_card_to_hand:             n => `コスト${n}以下を手札に獲得, 手札1枚をデッキトップに`,
+  topdeck_from_discard:          _ => `捨て札1枚をデッキトップに`,
+  discard_top_play_action:       _ => `デッキトップ1枚を捨て札に。アクションならプレイ可`,
+  gain_treasure_topdeck_attack_victory: n => `コスト${n}の財宝をデッキトップに獲得,【攻撃】他者は勝利点をデッキトップに`,
+  reveal_trash_discard_topdeck:  n => `デッキトップ${n}枚を公開し、各々廃棄/捨て/戻す`,
 };
 
 function buildEffectLines(c) {
@@ -843,10 +872,12 @@ function buildEffectLines(c) {
     else if (c.type === 'victory' && c.victory_points != null)
       effects = [{ type: 'victory_points', amount: c.victory_points }];
   }
-  return effects.map(ef => {
+  const lines = effects.map(ef => {
     const fn = effectLabels[ef.type];
     return fn ? fn(ef.amount) : null;
   }).filter(Boolean);
+  if (c.reaction === 'block_attack') lines.push('攻撃を無効化');
+  return lines;
 }
 
 // ── Card Data ──────────────────────────────────────────────────
@@ -968,7 +999,7 @@ function showWaiting() {
 
   const list = document.getElementById('waitPlayerList');
   list.innerHTML = gameState.players.map(p =>
-    `<li>${p.name}${p.id === playerId ? ' (あなた)' : ''}</li>`
+    `<li>${esc(p.name)}${p.id === playerId ? ' (あなた)' : ''}</li>`
   ).join('');
 }
 
@@ -983,35 +1014,35 @@ function showGame() {
 
   // Header
   const pa = st.pending_action;
-  const isMilitiaTarget = pa?.type === 'militia_discard' && pa?.target_player_id === playerId;
-  const isCellarOwner = pa?.type === 'cellar' && pa?.player_id === playerId;
+  const isMilitiaTarget = pa?.type === 'attack_discard' && pa?.target_player_id === playerId;
+  const isCellarOwner = pa?.type === 'discard_draw' && pa?.player_id === playerId;
 
-  const isMilitiaAttacker = pa?.type === 'militia_discard' && pa?.attacker_id === playerId;
+  const isMilitiaAttacker = pa?.type === 'attack_discard' && pa?.attacker_id === playerId;
 
   let turnText, phaseText;
   if (isMilitiaTarget) {
-    const attackerName = st.players.find(p => p.id === pa.attacker_id)?.name || '相手';
+    const attackerName = esc(st.players.find(p => p.id === pa.attacker_id)?.name || '相手');
     turnText = `${attackerName} のアタック`;
     phaseText = 'あなたが捨て札を選択中';
   } else if (isMilitiaAttacker) {
-    const targetName = st.players.find(p => p.id === pa.target_player_id)?.name || '相手';
+    const targetName = esc(st.players.find(p => p.id === pa.target_player_id)?.name || '相手');
     turnText = 'あなた のターン';
     phaseText = `${targetName} が捨て札を選択中`;
-  } else if (pa?.type === 'militia_discard') {
-    // 第三者視点
-    const attackerName = st.players.find(p => p.id === pa.attacker_id)?.name || '?';
-    const targetName = st.players.find(p => p.id === pa.target_player_id)?.name || '?';
+  } else if (pa?.type === 'attack_discard') {
+    const attackerName = esc(st.players.find(p => p.id === pa.attacker_id)?.name || '?');
+    const targetName = esc(st.players.find(p => p.id === pa.target_player_id)?.name || '?');
     turnText = `${attackerName} のターン`;
     phaseText = `${targetName} が捨て札を選択中`;
   } else if (isCellarOwner) {
-    turnText = myTurn ? 'あなた のターン' : `${st.current_player_name} のターン`;
+    turnText = myTurn ? 'あなた のターン' : `${esc(st.current_player_name)} のターン`;
     phaseText = '捨て札選択';
   } else {
-    const turnName = myTurn ? 'あなた' : st.current_player_name;
+    const turnName = myTurn ? 'あなた' : esc(st.current_player_name);
     turnText = `${turnName} のターン`;
     const phaseLabels = {
       action: 'アクション', buy: '購入', cleanup: 'クリーンアップ',
-      discard: '捨て札選択', gain: '獲得選択', cellar: '捨て札選択', game_over: '終了'
+      discard: '捨て札選択', gain: '獲得選択', discard_draw: '捨て札選択',
+      trash: '廃棄選択', topdeck: 'デッキトップ選択', game_over: '終了'
     };
     phaseText = phaseLabels[st.phase] || st.phase;
   }
@@ -1019,6 +1050,11 @@ function showGame() {
   document.getElementById('turnPlayer').textContent = turnText;
   const badge = document.getElementById('phaseBadge');
   badge.textContent = phaseText;
+
+  // My name badge
+  if (me) {
+    document.getElementById('myNameBadge').textContent = me.name;
+  }
 
   // Status
   if (me) {
@@ -1035,7 +1071,7 @@ function showGame() {
   const opps = st.players.filter(p => p.id !== playerId);
   document.getElementById('opponents').innerHTML = opps.map(p => `
     <div class="opponent-card ${p.id === st.current_player ? 'is-current' : ''}">
-      <div class="opp-name">${p.name}${!p.connected ? ' (切断)' : ''}</div>
+      <div class="opp-name">${esc(p.name)}${!p.connected ? ' (切断)' : ''}</div>
       <div class="opp-stats">
         <span>手札:${p.hand_count}</span>
         <span>山:${p.deck_count}</span>
@@ -1050,21 +1086,85 @@ function showGame() {
     </div>
   `).join('');
 
-  // Discard prompt
+  // Discard / Trash prompt
   const dp = document.getElementById('discardPrompt');
   discardMode = false;
+  trashMode = false;
+  topdeckMode = false;
 
-  if (pa && pa.type === 'militia_discard' && pa.target_player_id === playerId) {
+  if (pa && pa.type === 'attack_discard' && pa.target_player_id === playerId) {
     dp.style.display = 'flex';
     const needed = (me?.hand?.length || 0) - (pa.discard_to ?? 0);
     document.getElementById('discardPromptText').textContent =
       `アタック！ ${needed}枚選んで捨ててください（手札を${pa.discard_to}枚に）`;
     discardMode = true;
-  } else if (pa && pa.type === 'cellar' && pa.player_id === playerId) {
+  } else if (pa && pa.type === 'discard_draw' && pa.player_id === playerId) {
     dp.style.display = 'flex';
     document.getElementById('discardPromptText').textContent =
       '捨てるカードを選んでください（0枚でもOK）';
     discardMode = true;
+  } else if (pa && pa.type === 'trash' && pa.player_id === playerId) {
+    dp.style.display = 'flex';
+    document.getElementById('discardPromptText').textContent =
+      `廃棄するカードを選んでください（${pa.max_cards}枚まで、0枚OK）`;
+    discardMode = true;
+    trashMode = true;
+  } else if (pa && pa.type === 'trash_and_gain' && pa.player_id === playerId) {
+    dp.style.display = 'flex';
+    document.getElementById('discardPromptText').textContent =
+      '廃棄するカードを1枚選んでください';
+    discardMode = true;
+    trashMode = true;
+  } else if (pa && pa.type === 'trash_treasure_gain_treasure' && pa.player_id === playerId) {
+    dp.style.display = 'flex';
+    document.getElementById('discardPromptText').textContent =
+      '廃棄する財宝カードを1枚選んでください';
+    discardMode = true;
+    trashMode = true;
+  } else if (pa && pa.type === 'topdeck_from_hand' && pa.player_id === playerId) {
+    dp.style.display = 'flex';
+    document.getElementById('discardPromptText').textContent =
+      'デッキトップに置くカードを1枚選んでください';
+    discardMode = true;
+    topdeckMode = true;
+  } else if (pa && pa.type === 'topdeck_from_discard' && pa.player_id === playerId) {
+    // Show discard pile selection UI
+    const me2 = st.players.find(p => p.id === playerId);
+    const discardPile = me2?.discard_pile || [];
+    if (discardPile.length > 0) {
+      dp.style.display = 'flex';
+      document.getElementById('discardPromptText').innerHTML =
+        'デッキトップに置くカードを選んでください（スキップ可）<br>' +
+        discardPile.map(cid => {
+          const c = getCard(cid);
+          return `<span class="played-card" style="cursor:pointer;margin:2px;padding:2px 6px;border:1px solid var(--border);border-radius:4px" onclick="topdeckFromDiscard('${cid}')">${c.icon || ''} ${c.name} (${c.cost})</span>`;
+        }).join('') +
+        '<br><button class="btn btn-small" onclick="topdeckFromDiscard(null)" style="margin-top:4px">スキップ</button>';
+    } else {
+      dp.style.display = 'none';
+    }
+  } else if (pa && pa.type === 'play_revealed_action' && pa.player_id === playerId) {
+    const vc = getCard(pa.revealed_card);
+    dp.style.display = 'flex';
+    document.getElementById('discardPromptText').innerHTML =
+      `${vc.icon || ''} ${vc.name} をプレイしますか？ ` +
+      `<button class="btn btn-small" onclick="vassalDecision(true)" style="margin-left:8px">プレイする</button>` +
+      `<button class="btn btn-small btn-red" onclick="vassalDecision(false)" style="margin-left:4px">しない</button>`;
+  } else if (pa && pa.type === 'reveal_trash_discard_topdeck' && pa.player_id === playerId) {
+    const cards = pa.revealed_cards || [];
+    dp.style.display = 'flex';
+    window.sentryDecisions = {};
+    document.getElementById('discardPromptText').innerHTML =
+      '各カードの処理を選んでください：<br>' +
+      cards.map((cid, i) => {
+        const c = getCard(cid);
+        return `<div style="margin:4px 0;display:flex;align-items:center;gap:4px" id="sentry-row-${i}">` +
+          `<span>${c.icon || ''} ${c.name} (${c.cost})</span>` +
+          `<button class="btn btn-small btn-red" onclick="sentryAction(${i},'trash')">廃棄</button>` +
+          `<button class="btn btn-small" onclick="sentryAction(${i},'discard')">捨て</button>` +
+          `<button class="btn btn-small" onclick="sentryAction(${i},'topdeck')">戻す</button>` +
+          `</div>`;
+      }).join('');
   } else {
     dp.style.display = 'none';
     selectedDiscards.clear();
@@ -1099,13 +1199,16 @@ function renderSupply(st, myTurn, me) {
   const entries = Object.entries(st.supply || {});
 
   // Check if we're in gain mode
-  const isGainMode = st.pending_action?.type === 'gain' && st.pending_action?.player_id === playerId;
+  const gainType = st.pending_action?.type;
+  const isGainMode = (gainType === 'gain' || gainType === 'gain_to_hand' || gainType === 'gain_treasure_to_hand')
+    && st.pending_action?.player_id === playerId;
   const maxCost = st.pending_action?.max_cost || 0;
 
   function makeCardHTML(cid, count) {
     const c = getCard(cid);
     const canBuy = myTurn && st.phase === 'buy' && (me?.coins || 0) >= (c.cost || 0) && count > 0 && (me?.buys || 0) > 0;
-    const canGain = isGainMode && count > 0 && (c.cost || 0) <= maxCost;
+    const canGain = isGainMode && count > 0 && (c.cost || 0) <= maxCost
+      && (gainType !== 'gain_treasure_to_hand' || c.type === 'treasure');
 
     let onclick = '';
     if (canGain) {
@@ -1117,17 +1220,13 @@ function renderSupply(st, myTurn, me) {
     const lines = buildEffectLines(c);
     const effectLines = lines.map(l => `<span class="effect-line">${l}</span>`).join('');
 
-    // フレーバー：アクションカードは説明文の最初の句
-    let flavorText = '';
-    if (c.type === 'action') {
-      const match = (c.description || '').match(/^(.+?。)/);
-      flavorText = match ? match[1] : '';
-    }
+    // フレーバーテキスト（description はフレーバーのみ）
+    const flavorText = c.description || '';
 
-    // 効果があればそれを表示（フレーバーはCSS制御で大画面のみ）、なければ説明文をフォールバック
+    // 効果は effects 配列から生成、フレーバーはCSS制御で大画面のみ
     const bodyHTML = effectLines
       ? `${flavorText ? `<div class="card-flavor">${flavorText}</div>` : ''}<div class="card-effects">${effectLines}</div>`
-      : `<div class="card-flavor" style="display:block">${c.description || ''}</div>`;
+      : (flavorText ? `<div class="card-flavor" style="display:block">${flavorText}</div>` : '');
 
     const subtype = c.subtype || (c.type === 'action' ? 'action' : '');
     const subtypeLabels = { action: 'アクション', attack: 'アタック', reaction: 'リアクション' };
@@ -1244,7 +1343,7 @@ function showGameOver() {
 
   document.getElementById('scoreList').innerHTML = scores.map((s, i) => `
     <li>
-      <span>${i === 0 ? '👑 ' : ''}${s.name}${s.id === playerId ? ' (あなた)' : ''}</span>
+      <span>${i === 0 ? '👑 ' : ''}${esc(s.name)}${s.id === playerId ? ' (あなた)' : ''}</span>
       <span>${s.vp} VP</span>
     </li>
   `).join('');
@@ -1277,10 +1376,55 @@ function submitDiscard() {
   const cardIds = Array.from(selectedDiscards).map(idx => me.hand[idx]);
   const pa = gameState.pending_action;
 
-  if (pa?.type === 'militia_discard' || pa?.type === 'cellar') {
+  if (topdeckMode) {
+    // topdeck_from_hand: send the first selected card
+    send({ action: 'topdeck_selection', card_id: cardIds[0] || null });
+  } else if (pa?.type === 'attack_discard' || pa?.type === 'discard_draw') {
     send({ action: 'discard_selection', card_ids: cardIds });
+  } else if (trashMode) {
+    send({ action: 'trash_selection', card_ids: cardIds });
   }
   selectedDiscards.clear();
+}
+
+function topdeckFromDiscard(cardId) {
+  send({ action: 'topdeck_selection', card_id: cardId });
+}
+
+function vassalDecision(play) {
+  send({ action: 'vassal_decision', play: play });
+}
+
+// Sentry: collect decisions per card index, then send all at once
+function sentryAction(idx, action) {
+  if (!window.sentryDecisions) window.sentryDecisions = {};
+  window.sentryDecisions[idx] = action;
+
+  const pa = gameState.pending_action;
+  const revealed = pa?.revealed_cards || [];
+
+  // Highlight the decided button
+  const row = document.getElementById(`sentry-row-${idx}`);
+  if (row) {
+    row.querySelectorAll('button').forEach(btn => {
+      const onclick = btn.getAttribute('onclick') || '';
+      const isMatch = onclick.includes(`'${action}'`);
+      btn.style.opacity = isMatch ? '1' : '0.4';
+      if (isMatch) btn.style.border = '2px solid var(--accent)';
+      else btn.style.border = '';
+    });
+  }
+
+  // Check if all revealed cards have decisions
+  const allDecided = revealed.every((_, i) => window.sentryDecisions[i] != null);
+  if (allDecided) {
+    const decisions = revealed.map((cid, i) => ({
+      card_id: cid,
+      action: window.sentryDecisions[i]
+    }));
+    window.sentryDecisions = {};
+    send({ action: 'sentry_decision', decisions: decisions });
+  }
 }
 
 // ── Toast ──────────────────────────────────────────────────────
