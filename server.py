@@ -13,8 +13,8 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from game_engine import Game, CardData, Phase
 
@@ -51,17 +51,26 @@ print(f"[server] cards: {CARD_DATA_PATH}")
 # ── App ─────────────────────────────────────────────────────────
 app = FastAPI(title="Sovereign")
 
+# ── CORS ─────────────────────────────────────────────────────────
+_allowed_origins = os.environ.get(
+    "ALLOWED_ORIGINS",
+    "http://localhost:5173,http://localhost:3000",
+).split(",")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in _allowed_origins],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # ── Game rooms ──────────────────────────────────────────────────
 games: dict[str, Game] = {}
 connections: dict[str, dict[str, WebSocket]] = {}  # game_id -> {player_id: ws}
 
 
 # ── REST API ────────────────────────────────────────────────────
-
-@app.get("/")
-async def index():
-    return FileResponse(ROOT / "static" / "index.html")
-
 
 @app.get("/api/cards")
 async def get_cards():
@@ -227,10 +236,6 @@ async def websocket_endpoint(websocket: WebSocket, game_id: str):
         print(f"WebSocket error: {e}")
         if player_id and game_id in connections:
             connections[game_id].pop(player_id, None)
-
-
-# ── Static files ────────────────────────────────────────────────
-app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 
 
 if __name__ == "__main__":

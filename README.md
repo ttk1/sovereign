@@ -8,15 +8,25 @@
 
 - Docker + Docker Compose
 
-### 起動
+### 開発モード（推奨）
+
+Vite dev server によるホットリロード（HMR）付き。コードを編集すると自動で反映されます。
 
 ```bash
 docker compose up --build
 ```
 
-ブラウザで `http://localhost:8000` にアクセス。
+ブラウザで `http://localhost:3000` にアクセス。
 
-コードを編集するとサーバーがホットリロードされます。
+### 本番モード
+
+ビルド済み静的ファイルを nginx で配信します。
+
+```bash
+docker compose -f docker-compose.prod.yml up --build
+```
+
+ブラウザで `http://localhost:3000` にアクセス。
 
 #### カードセットを指定して起動
 
@@ -38,31 +48,41 @@ docker compose down
 
 ## 友人と遊ぶ場合
 
-同一LAN内なら `http://<あなたのIPアドレス>:8000` を共有してください。
+同一LAN内なら `http://<あなたのIPアドレス>:3000` を共有してください。
 
 インターネット越しにプレイする場合は ngrok や Cloudflare Tunnel などのトンネリングサービスを使います。
 
 ```bash
 # ngrok の例
-ngrok http 8000
+ngrok http 3000
 ```
 
 ## ファイル構成
 
 ```
 sovereign/
-├── server.py               # FastAPI サーバー（REST + WebSocket）
-├── game_engine.py          # ゲームロジック
+├── server.py                   # FastAPI サーバー（REST + WebSocket）
+├── game_engine.py              # ゲームロジック
 ├── data/
-│   └── cards.json          # カード定義（差し替え可能）
-├── static/
-│   └── index.html          # プレイ用 UI
+│   └── cards.json              # カード定義（差し替え可能）
+├── frontend/                   # React UI（TypeScript + Vite + CSS Modules）
+│   ├── Dockerfile              # 本番用（マルチステージ: ビルド → nginx）
+│   ├── Dockerfile.dev          # 開発用（Vite dev server）
+│   ├── nginx.conf              # 本番用 nginx 設定
+│   ├── vite.config.ts          # Vite 設定（プロキシ等）
+│   └── src/
+│       ├── App.tsx             # ルートコンポーネント
+│       ├── types.ts            # 型定義
+│       ├── hooks/              # カスタムフック（WebSocket, ゲーム状態）
+│       └── components/         # UI コンポーネント
 ├── scripts/
-│   ├── bot.py              # 戦略ボット（--ai フラグで Claude API 使用可）
-│   ├── bridge.py           # AI エージェント向け WebSocket↔HTTP 橋渡しサーバー
-│   └── interactive_play.py # Claude Code がインタラクティブにプレイするクライアント
-├── pyproject.toml
-└── docker-compose.yml
+│   ├── bot.py                  # 戦略ボット（--ai フラグで Claude API 使用可）
+│   ├── bridge.py               # AI エージェント向け WebSocket↔HTTP 橋渡しサーバー
+│   └── interactive_play.py     # Claude Code がインタラクティブにプレイするクライアント
+├── docker-compose.yml          # 開発用（Vite HMR + ホットリロード）
+├── docker-compose.prod.yml     # 本番用（nginx 静的配信）
+├── Dockerfile                  # バックエンド用
+└── pyproject.toml
 ```
 
 ## カードのカスタマイズ
@@ -238,7 +258,7 @@ docker compose exec -d app python scripts/bridge.py $GAME_ID --name Claude --por
 
 **4. 相手がブラウザから参加してゲームを開始**
 
-`http://localhost:8000` を開き、ゲームIDを入力して参加 → スタート。
+`http://localhost:3000` を開き、ゲームIDを入力して参加 → スタート。
 
 **5. Claude Code がプレイ**
 

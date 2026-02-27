@@ -1,0 +1,19 @@
+:root {
+  --bg: #0f1117;
+  --surface: #1a1d27;
+  --surface2: #242836;
+  --border: #2e3345;
+  --text: #e4e6f0;
+  --text-dim: #8b90a5;
+  --accent: #6c8cff;
+  --accent-glow: rgba(108, 140, 255, 0.3);
+  --sigil: #fbbf24;
+  --green: #34d399;
+  --red: #f87171;
+  --treasure-bg: #2a2520;
+  --victory-bg: #1a2a1a;
+  --action-bg: #1a1a2a;
+  --radius: 10px;
+  --card-w: clamp(145px, 8.5vw, 220px);
+  --card-h: clamp(210px, 12.5vw, 330px);
+}

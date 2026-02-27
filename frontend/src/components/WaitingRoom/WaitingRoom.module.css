@@ -1,0 +1,50 @@
+.waiting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 2.5rem;
+  max-width: 500px;
+  width: 100%;
+  text-align: center;
+}
+
+.card h2 {
+  font-size: 1.3rem;
+  margin-bottom: 0.3rem;
+}
+
+.roomCode {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.6rem;
+  color: var(--accent);
+  margin: 1rem 0;
+  letter-spacing: 0.15em;
+  user-select: all;
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.playerList {
+  list-style: none;
+  margin: 1.5rem 0;
+}
+
+.playerList li {
+  padding: 0.5rem;
+  background: var(--surface2);
+  border-radius: var(--radius);
+  margin-bottom: 0.3rem;
+  font-size: 0.9rem;
+}

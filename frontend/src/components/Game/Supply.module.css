@@ -1,0 +1,179 @@
+/* ── Supply ── */
+.supplySection {
+  margin-bottom: 0.8rem;
+}
+
+.supplySection h3 {
+  font-size: 0.95rem;
+  color: var(--text-dim);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.supplyLayout {
+  display: flex;
+  gap: clamp(0.5rem, 1vw, 1.5rem);
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.victoryCards,
+.treasureCards {
+  display: grid;
+  grid-template-columns: var(--card-w);
+  gap: clamp(0.3rem, 0.5vw, 0.6rem);
+  flex-shrink: 0;
+}
+
+.actionCards {
+  display: grid;
+  grid-template-columns: repeat(5, var(--card-w));
+  gap: clamp(0.3rem, 0.5vw, 0.6rem);
+  flex-shrink: 0;
+}
+
+.supplyCard {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: clamp(10px, 1.2vw, 18px);
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+  width: var(--card-w);
+  min-height: var(--card-h);
+  display: flex;
+  flex-direction: column;
+}
+
+.supplyCard:hover {
+  border-color: var(--accent);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+}
+
+.empty {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.cardHeader {
+  position: relative;
+  padding: clamp(0.3rem, 0.45vw, 0.55rem) clamp(0.4rem, 0.6vw, 0.7rem);
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+}
+
+.cardName {
+  font-size: clamp(0.72rem, 1vw, 0.95rem);
+  font-weight: 700;
+  line-height: 1.2;
+  padding: 0 clamp(1.4rem, 1.8vw, 2.2rem);
+}
+
+.cardCost {
+  position: absolute;
+  top: 50%;
+  right: clamp(0.3rem, 0.4vw, 0.5rem);
+  transform: translateY(-50%);
+  background: var(--sigil);
+  color: #000;
+  font-size: clamp(0.7rem, 0.88vw, 1rem);
+  font-weight: 700;
+  width: clamp(18px, 1.7vw, 26px);
+  height: clamp(18px, 1.7vw, 26px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.cardArt {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(1.6rem, 2.4vw, 3.2rem);
+  background: rgba(0,0,0,0.18);
+  border-bottom: 1px solid var(--border);
+  min-height: clamp(44px, 5vw, 80px);
+  padding: clamp(0.2rem, 0.4vw, 0.6rem);
+  line-height: 1;
+}
+
+.cardBody {
+  flex-shrink: 0;
+  padding: clamp(0.25rem, 0.4vw, 0.5rem) clamp(0.3rem, 0.5vw, 0.6rem);
+  text-align: center;
+}
+
+.cardFlavor {
+  display: none;
+  font-size: clamp(0.52rem, 0.65vw, 0.75rem);
+  color: var(--text-dim);
+  line-height: 1.3;
+  margin-bottom: clamp(0.15rem, 0.25vw, 0.35rem);
+  font-style: italic;
+}
+
+.cardEffects {
+  font-size: clamp(0.7rem, 0.85vw, 0.85rem);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+.effectLine {
+  display: block;
+}
+
+.cardCount {
+  position: absolute;
+  top: 50%;
+  left: clamp(0.3rem, 0.4vw, 0.5rem);
+  transform: translateY(-50%);
+  font-size: clamp(0.55rem, 0.7vw, 0.82rem);
+  color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Type backgrounds */
+.typeTreasure { background: var(--treasure-bg); }
+.typeVictory { background: var(--victory-bg); }
+.typeAction { background: var(--action-bg); }
+.subtypeAttack { background: #1f1218; border-color: #7a2030; }
+.subtypeAttack:hover { border-color: #e05070; }
+.subtypeReaction { background: #111a2a; border-color: #1a4a7a; }
+.subtypeReaction:hover { border-color: #4090d0; }
+
+/* Subtype badge */
+.cardSubtype {
+  display: inline-block;
+  font-size: clamp(0.55rem, 0.72vw, 0.72rem);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 0.1em 0.5em;
+  border-radius: 3px;
+  margin-top: 0.2em;
+  text-transform: uppercase;
+}
+.stAction   { background: rgba(108,140,255,0.25); color: #8aabff; }
+.stAttack   { background: rgba(220, 60, 80,0.3);  color: #f07090; }
+.stReaction { background: rgba(50, 160,220,0.25); color: #60c0e8; }
+
+.clickable { cursor: pointer; }
+.notClickable { cursor: default; }
+
+@media (min-width: 1600px) {
+  .cardFlavor { display: block; }
+}
+
+@media (max-width: 800px) {
+  .supplyLayout { flex-direction: column; align-items: center; }
+  .victoryCards { grid-template-columns: repeat(auto-fill, var(--card-w)); }
+  .treasureCards { grid-template-columns: repeat(auto-fill, var(--card-w)); }
+  .actionCards { grid-template-columns: repeat(auto-fill, var(--card-w)); }
+}

@@ -11,4 +11,18 @@ services:
       - /app/.venv
     environment:
       - CARDS=${CARDS:-cards.json}
+      - ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000,http://frontend:3000
     command: uvicorn server:app --host 0.0.0.0 --port 8000 --reload
+
+  # 開発時: Vite dev server (HMR対応)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - app
