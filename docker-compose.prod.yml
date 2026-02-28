@@ -1,8 +1,9 @@
 services:
   app:
     build: .
+    expose:
+      - "8000"
     ports:
-      - "8000:8000"
       - "8765:8765"
     environment:
       - CARDS=${CARDS:-cards.json}
@@ -14,5 +15,8 @@ services:
     build: ./frontend
     ports:
       - "3000:3000"
+    environment:
+      - BASIC_AUTH_USER=${BASIC_AUTH_USER:-}
+      - BASIC_AUTH_PASSWORD=${BASIC_AUTH_PASSWORD:-}
     depends_on:
       - app

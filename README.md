@@ -28,6 +28,17 @@ docker compose -f docker-compose.prod.yml up --build
 
 ブラウザで `http://localhost:3000` にアクセス。
 
+#### BASIC 認証（オプション）
+
+環境変数 `BASIC_AUTH_USER` と `BASIC_AUTH_PASSWORD` を設定すると、nginx レベルで BASIC 認証がかかります。
+
+```bash
+BASIC_AUTH_USER=sovereign BASIC_AUTH_PASSWORD=secret \
+  docker compose -f docker-compose.prod.yml up --build
+```
+
+設定しない場合は認証なしで動作します。
+
 #### カードセットを指定して起動
 
 環境変数 `CARDS` で `data/` 内のカード定義ファイルを切り替えられます。
